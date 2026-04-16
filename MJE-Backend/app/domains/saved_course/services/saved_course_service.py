@@ -17,6 +17,7 @@ class SavedCourseService:
         return SendSavedCourseEmailResponse(
             request_id=str(uuid4()),
             status="requested",
-            recipient_email=request.recipient_email,
+            recipient_email=str(request.recipient_email),
+            course_id=request.course_id,
             course_title=request.course_title,
         )
