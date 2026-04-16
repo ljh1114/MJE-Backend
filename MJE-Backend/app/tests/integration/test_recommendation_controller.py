@@ -19,9 +19,22 @@ def test_create_recommendation_returns_main_and_secondary_courses() -> None:
     assert response.status_code == 200
 
     payload = response.json()
+    assert payload["request_condition"] == {
+        "place": "gangnam",
+        "time_slot": "evening",
+        "activity_type": "dining",
+        "transportation": "car",
+    }
+    assert payload["summary"] == {
+        "total_courses": 3,
+        "main_course_count": 1,
+        "secondary_course_count": 2,
+    }
     assert payload["main_course"]["place_name"] == "강남 와인 다이닝 거리"
     assert "keywords" in payload["main_course"]
     assert len(payload["secondary_courses"]) == 2
+    assert len(payload["courses"]) == 3
+    assert payload["courses"][0]["course_type"] == "main"
 
 
 def test_create_recommendation_returns_rule_based_course_for_car_activity() -> None:
@@ -39,6 +52,7 @@ def test_create_recommendation_returns_rule_based_course_for_car_activity() -> N
     payload = response.json()
     assert payload["main_course"]["title"] == "홍대 액티비티 드라이브 데이트"
     assert payload["secondary_courses"][0]["course_type"] == "secondary"
+    assert payload["summary"]["total_courses"] == 3
 
 
 def test_create_recommendation_returns_error_for_invalid_input() -> None:

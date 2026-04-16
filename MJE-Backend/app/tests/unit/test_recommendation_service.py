@@ -28,6 +28,8 @@ def test_generate_recommendation_creates_expected_shape() -> None:
         )
     )
 
+    assert result.condition.place == "seongsu"
+    assert result.condition.time_slot == "afternoon"
     assert result.main_course.course_type == "main"
     assert len(result.secondary_courses) == 2
     assert all(course.keywords for course in result.secondary_courses)

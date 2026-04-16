@@ -46,6 +46,7 @@ class RecommendationRuleEngine:
         ]
         return Recommendation(
             recommendation_id=recommendation_id,
+            condition=rule.condition,
             main_course=main_course,
             secondary_courses=secondary_courses,
         )

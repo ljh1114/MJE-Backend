@@ -3,7 +3,9 @@ from fastapi import APIRouter, HTTPException, status
 from app.domains.recommendation.dtos.recommendation_request import RecommendationRequest
 from app.domains.recommendation.dtos.recommendation_response import (
     CourseItemResponse,
+    RecommendationConditionResponse,
     RecommendationResponse,
+    RecommendationSummaryResponse,
 )
 from app.domains.recommendation.exceptions.recommendation_exceptions import (
     RecommendationInvalidInputError,
@@ -42,21 +44,36 @@ def create_recommendation(
             },
         ) from error
 
+    secondary_courses = [
+        CourseItemResponse(
+            course_type=course.course_type,
+            title=course.title,
+            place_name=course.place_name,
+            keywords=course.keywords,
+        )
+        for course in recommendation.secondary_courses
+    ]
+    main_course = CourseItemResponse(
+        course_type=recommendation.main_course.course_type,
+        title=recommendation.main_course.title,
+        place_name=recommendation.main_course.place_name,
+        keywords=recommendation.main_course.keywords,
+    )
+
     return RecommendationResponse(
         recommendation_id=recommendation.recommendation_id,
-        main_course=CourseItemResponse(
-            course_type=recommendation.main_course.course_type,
-            title=recommendation.main_course.title,
-            place_name=recommendation.main_course.place_name,
-            keywords=recommendation.main_course.keywords,
+        request_condition=RecommendationConditionResponse(
+            place=recommendation.condition.place,
+            time_slot=recommendation.condition.time_slot,
+            activity_type=recommendation.condition.activity_type,
+            transportation=recommendation.condition.transportation,
         ),
-        secondary_courses=[
-            CourseItemResponse(
-                course_type=course.course_type,
-                title=course.title,
-                place_name=course.place_name,
-                keywords=course.keywords,
-            )
-            for course in recommendation.secondary_courses
-        ],
+        summary=RecommendationSummaryResponse(
+            total_courses=1 + len(secondary_courses),
+            main_course_count=1,
+            secondary_course_count=len(secondary_courses),
+        ),
+        main_course=main_course,
+        secondary_courses=secondary_courses,
+        courses=[main_course, *secondary_courses],
     )
