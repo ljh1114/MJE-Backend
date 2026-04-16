@@ -69,6 +69,23 @@ def test_create_recommendation_returns_error_for_invalid_input() -> None:
     assert response.status_code == 400
     assert response.json()["detail"]["code"] == "RECOMMENDATION_INVALID_INPUT"
     assert response.json()["detail"]["field"] == "place"
+    assert response.json()["detail"]["invalid_value"] == "busan"
+    assert "gangnam" in response.json()["detail"]["allowed_values"]
+
+
+def test_create_recommendation_returns_error_for_invalid_request_payload() -> None:
+    response = client.post(
+        "/api/v1/recommendations",
+        json={
+            "place": "강남",
+            "time_slot": "저녁",
+            "activity_type": "식사",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "RECOMMENDATION_INVALID_REQUEST"
+    assert response.json()["field"] == "transportation"
 
 
 def test_create_recommendation_returns_error_when_rule_not_matched() -> None:
@@ -84,3 +101,4 @@ def test_create_recommendation_returns_error_when_rule_not_matched() -> None:
 
     assert response.status_code == 400
     assert response.json()["detail"]["code"] == "RECOMMENDATION_RULE_NOT_MATCHED"
+    assert response.json()["detail"]["field"] is None

@@ -1,5 +1,8 @@
 from fastapi import APIRouter, HTTPException, status
 
+from app.domains.recommendation.dtos.recommendation_error_response import (
+    RecommendationErrorResponse,
+)
 from app.domains.recommendation.dtos.recommendation_request import RecommendationRequest
 from app.domains.recommendation.dtos.recommendation_response import (
     CourseItemResponse,
@@ -19,7 +22,14 @@ router = APIRouter(prefix="/api/v1/recommendations", tags=["recommendation"])
 recommendation_service = RecommendationService()
 
 
-@router.post("", response_model=RecommendationResponse, status_code=status.HTTP_200_OK)
+@router.post(
+    "",
+    response_model=RecommendationResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        400: {"model": RecommendationErrorResponse},
+    },
+)
 def create_recommendation(
     request: RecommendationRequest,
 ) -> RecommendationResponse:
@@ -28,20 +38,21 @@ def create_recommendation(
     except RecommendationInvalidInputError as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "RECOMMENDATION_INVALID_INPUT",
-                "message": str(error),
-                "field": error.field_name,
-                "allowed_values": error.allowed_values,
-            },
+            detail=RecommendationErrorResponse(
+                code=error.error_code,
+                message=str(error),
+                field=error.field_name,
+                invalid_value=error.field_value,
+                allowed_values=error.allowed_values,
+            ).model_dump(),
         ) from error
     except RecommendationRuleNotMatchedError as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "RECOMMENDATION_RULE_NOT_MATCHED",
-                "message": str(error),
-            },
+            detail=RecommendationErrorResponse(
+                code="RECOMMENDATION_RULE_NOT_MATCHED",
+                message=str(error),
+            ).model_dump(),
         ) from error
 
     secondary_courses = [

@@ -12,6 +12,7 @@ class RecommendationInvalidInputError(RecommendationError):
         self.field_name = field_name
         self.field_value = field_value
         self.allowed_values = allowed_values
+        self.error_code = "RECOMMENDATION_INVALID_INPUT"
         super().__init__(
             f"Invalid value for '{field_name}': '{field_value}'. "
             f"Allowed values: {', '.join(allowed_values)}."
