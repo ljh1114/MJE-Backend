@@ -6,6 +6,9 @@ from app.domains.recommendation.dtos.recommendation_error_response import (
     RecommendationErrorResponse,
 )
 from app.domains.recommendation.controllers.recommendation_controller import router as recommendation_router
+from app.domains.saved_course.controllers.saved_course_controller import (
+    router as saved_course_router,
+)
 
 
 def create_app() -> FastAPI:
@@ -41,6 +44,7 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(recommendation_router)
+    app.include_router(saved_course_router)
     return app
 
 
