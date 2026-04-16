@@ -3,6 +3,10 @@ from fastapi import APIRouter, HTTPException, status
 from app.domains.recommendation.dtos.recommendation_error_response import (
     RecommendationErrorResponse,
 )
+from app.domains.recommendation.dtos.recommendation_course_detail_response import (
+    CourseDetailItemResponse,
+    RecommendationCourseDetailResponse,
+)
 from app.domains.recommendation.dtos.recommendation_request import RecommendationRequest
 from app.domains.recommendation.dtos.recommendation_response import (
     CourseItemResponse,
@@ -11,6 +15,7 @@ from app.domains.recommendation.dtos.recommendation_response import (
     RecommendationSummaryResponse,
 )
 from app.domains.recommendation.exceptions.recommendation_exceptions import (
+    RecommendationCourseIdentifierError,
     RecommendationInvalidInputError,
     RecommendationRuleNotMatchedError,
 )
@@ -87,4 +92,43 @@ def create_recommendation(
         main_course=main_course,
         secondary_courses=secondary_courses,
         courses=[main_course, *secondary_courses],
+    )
+
+
+@router.get(
+    "/courses/{course_id}/details",
+    response_model=RecommendationCourseDetailResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        400: {"model": RecommendationErrorResponse},
+    },
+)
+def get_recommendation_course_detail(
+    course_id: str,
+) -> RecommendationCourseDetailResponse:
+    try:
+        course_detail = recommendation_service.get_course_detail(course_id)
+    except RecommendationCourseIdentifierError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=RecommendationErrorResponse(
+                code=error.error_code,
+                message=str(error),
+                field="course_id",
+                invalid_value=error.course_id,
+            ).model_dump(),
+        ) from error
+
+    return RecommendationCourseDetailResponse(
+        course_id=course_detail.course_id,
+        course_title=course_detail.course_title,
+        detail_items=[
+            CourseDetailItemResponse(
+                component_type=item.component_type,
+                name=item.name,
+                description=item.description,
+                keywords=item.keywords,
+            )
+            for item in course_detail.detail_items
+        ],
     )

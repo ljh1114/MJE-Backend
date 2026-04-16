@@ -102,3 +102,29 @@ def test_create_recommendation_returns_error_when_rule_not_matched() -> None:
     assert response.status_code == 400
     assert response.json()["detail"]["code"] == "RECOMMENDATION_RULE_NOT_MATCHED"
     assert response.json()["detail"]["field"] is None
+
+
+def test_get_recommendation_course_detail_returns_detail_items() -> None:
+    response = client.get("/api/v1/recommendations/courses/course-gangnam-main/details")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["course_id"] == "course-gangnam-main"
+    assert payload["course_title"] == "강남 감성 다이닝 데이트"
+    assert len(payload["detail_items"]) == 3
+    assert {item["component_type"] for item in payload["detail_items"]} == {
+        "restaurant",
+        "cafe",
+        "activity",
+    }
+
+
+def test_get_recommendation_course_detail_returns_error_for_invalid_identifier() -> None:
+    response = client.get("/api/v1/recommendations/courses/unknown-course/details")
+
+    assert response.status_code == 400
+    assert (
+        response.json()["detail"]["code"]
+        == "RECOMMENDATION_COURSE_IDENTIFIER_INVALID"
+    )
+    assert response.json()["detail"]["field"] == "course_id"

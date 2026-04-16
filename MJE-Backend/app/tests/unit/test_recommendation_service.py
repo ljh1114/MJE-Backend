@@ -5,6 +5,7 @@ from app.domains.recommendation.entities.recommendation_condition import (
     RecommendationCondition,
 )
 from app.domains.recommendation.exceptions.recommendation_exceptions import (
+    RecommendationCourseIdentifierError,
     RecommendationInvalidInputError,
     RecommendationRuleNotMatchedError,
 )
@@ -113,3 +114,20 @@ def test_generate_recommendation_raises_for_unmatched_rule() -> None:
                 transportation="car",
             )
         )
+
+
+def test_get_course_detail_returns_detail_list() -> None:
+    service = RecommendationService()
+
+    result = service.get_course_detail("course-seongsu-main")
+
+    assert result.course_id == "course-seongsu-main"
+    assert len(result.detail_items) == 3
+    assert result.detail_items[0].component_type == "cafe"
+
+
+def test_get_course_detail_raises_for_invalid_identifier() -> None:
+    service = RecommendationService()
+
+    with pytest.raises(RecommendationCourseIdentifierError):
+        service.get_course_detail("invalid-course-id")

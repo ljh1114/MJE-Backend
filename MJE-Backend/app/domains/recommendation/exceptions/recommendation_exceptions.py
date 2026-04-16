@@ -21,3 +21,12 @@ class RecommendationInvalidInputError(RecommendationError):
 
 class RecommendationRuleNotMatchedError(RecommendationError):
     """Raised when no recommendation rule matches the request."""
+
+
+class RecommendationCourseIdentifierError(RecommendationError):
+    """Raised when course identifier is invalid."""
+
+    def __init__(self, course_id: str) -> None:
+        self.course_id = course_id
+        self.error_code = "RECOMMENDATION_COURSE_IDENTIFIER_INVALID"
+        super().__init__(f"Invalid recommendation course identifier: '{course_id}'.")
