@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Response, status
 
 from app.domains.saved_course.dtos.send_saved_course_email_request import (
     SendSavedCourseEmailRequest,
@@ -8,6 +8,11 @@ from app.domains.saved_course.dtos.send_saved_course_email_response import (
 )
 from app.domains.saved_course.dtos.saved_course_error_response import (
     SavedCourseErrorResponse,
+)
+from app.domains.recommendation.exceptions.recommendation_exceptions import (
+    RecommendationCourseIdentifierError,
+    RecommendationCourseIdentifierFormatError,
+    RecommendationInvalidCourseResultError,
 )
 from app.domains.saved_course.services.saved_course_service import SavedCourseService
 
@@ -23,5 +28,25 @@ saved_course_service = SavedCourseService()
 )
 def send_saved_course_email(
     request: SendSavedCourseEmailRequest,
+    response: Response,
 ) -> SendSavedCourseEmailResponse:
-    return saved_course_service.create_email_send_request(request)
+    try:
+        result = saved_course_service.create_email_send_request(request)
+    except (
+        RecommendationCourseIdentifierFormatError,
+        RecommendationCourseIdentifierError,
+        RecommendationInvalidCourseResultError,
+    ) as error:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return SendSavedCourseEmailResponse(
+            request_id="",
+            status="failed",
+            recipient_email=str(request.recipient_email),
+            course_id=request.course_id,
+            course_title=request.course_title,
+            failure_reason=str(error),
+        )
+
+    if result.status == "failed":
+        response.status_code = status.HTTP_502_BAD_GATEWAY
+    return result
