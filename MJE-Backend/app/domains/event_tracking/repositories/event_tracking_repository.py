@@ -3,9 +3,13 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.domains.event_tracking.entities.tracking_event import TrackingEvent
+from app.domains.event_tracking.exceptions.event_tracking_exceptions import (
+    EventTrackingPersistenceError,
+)
 from app.domains.event_tracking.repositories.tracking_event_row import (
     TrackingEventRow,
 )
@@ -41,6 +45,9 @@ class SqlAlchemyEventTrackingRepository(EventTrackingRepository):
             event_payload=dict(event.event_payload),
             occurred_at=event.occurred_at,
         )
-        with Session(self._engine) as session:
-            session.add(row)
-            session.commit()
+        try:
+            with Session(self._engine) as session:
+                session.add(row)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise EventTrackingPersistenceError() from exc

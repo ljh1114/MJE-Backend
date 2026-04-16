@@ -10,6 +10,7 @@ from app.domains.event_tracking.event_tracking_dependencies import (
 )
 from app.domains.event_tracking.exceptions.event_tracking_exceptions import (
     EventTrackingInvalidInputError,
+    EventTrackingPersistenceError,
 )
 from app.domains.event_tracking.services.event_tracking_service import (
     EventTrackingService,
@@ -22,7 +23,10 @@ router = APIRouter(prefix="/api/v1/events", tags=["event_tracking"])
     "",
     response_model=EventResponse,
     status_code=status.HTTP_202_ACCEPTED,
-    responses={400: {"model": EventTrackingErrorResponse}},
+    responses={
+        400: {"model": EventTrackingErrorResponse},
+        503: {"model": EventTrackingErrorResponse},
+    },
 )
 def collect_event(
     request: EventRequest,
@@ -38,5 +42,13 @@ def collect_event(
                 message=str(error),
                 field=error.field_name,
                 invalid_value=error.field_value,
+            ).model_dump(),
+        ) from error
+    except EventTrackingPersistenceError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=EventTrackingErrorResponse(
+                code=error.error_code,
+                message=str(error),
             ).model_dump(),
         ) from error

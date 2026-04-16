@@ -19,3 +19,11 @@ class EventTrackingInvalidInputError(EventTrackingError):
         self.field_value = field_value
         self.error_code = "EVENT_TRACKING_INVALID_INPUT"
         super().__init__(message)
+
+
+class EventTrackingPersistenceError(EventTrackingError):
+    """Raised when a valid event could not be written to the database."""
+
+    def __init__(self, message: str = "Failed to persist tracking event.") -> None:
+        self.error_code = "EVENT_TRACKING_PERSISTENCE_FAILED"
+        super().__init__(message)
