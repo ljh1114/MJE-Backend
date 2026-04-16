@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.domains.event_tracking.dtos.event_request import EventRequest
@@ -16,6 +18,8 @@ from app.domains.event_tracking.services.event_tracking_service import (
     EventTrackingService,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/v1/events", tags=["event_tracking"])
 
 
@@ -25,6 +29,7 @@ router = APIRouter(prefix="/api/v1/events", tags=["event_tracking"])
     status_code=status.HTTP_202_ACCEPTED,
     responses={
         400: {"model": EventTrackingErrorResponse},
+        500: {"model": EventTrackingErrorResponse},
         503: {"model": EventTrackingErrorResponse},
     },
 )
@@ -34,6 +39,8 @@ def collect_event(
 ) -> EventResponse:
     try:
         return event_tracking_service.collect_event(request)
+    except HTTPException:
+        raise
     except EventTrackingInvalidInputError as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -52,3 +59,12 @@ def collect_event(
                 message=str(error),
             ).model_dump(),
         ) from error
+    except Exception:
+        logger.exception("event_tracking.collect_event failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=EventTrackingErrorResponse(
+                code="EVENT_TRACKING_INTERNAL_ERROR",
+                message="An unexpected error occurred while processing the event.",
+            ).model_dump(),
+        ) from None

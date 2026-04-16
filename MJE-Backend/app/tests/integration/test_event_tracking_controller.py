@@ -189,3 +189,61 @@ def test_collect_event_endpoint_returns_503_when_persistence_fails() -> None:
         assert payload["code"] == "EVENT_TRACKING_PERSISTENCE_FAILED"
     finally:
         app.dependency_overrides.clear()
+
+
+def test_collect_event_endpoint_rejects_invalid_json_body() -> None:
+    response = client.post(
+        "/api/v1/events",
+        content="{not-json",
+        headers={"content-type": "application/json"},
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["code"] == "EVENT_TRACKING_INVALID_REQUEST"
+    assert payload["field"] == "body"
+    assert "JSON" in payload["message"]
+
+
+def test_collect_event_endpoint_rejects_wrong_type_for_page_url() -> None:
+    response = client.post(
+        "/api/v1/events",
+        json={
+            "event_type": "create_course_clicked",
+            "session_id": "sess_01HZ",
+            "page_url": 12345,
+        },
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["code"] == "EVENT_TRACKING_INVALID_REQUEST"
+    assert payload["field"] == "page_url"
+
+
+def test_collect_event_endpoint_returns_500_on_unexpected_service_failure() -> None:
+    from unittest.mock import MagicMock
+
+    from app.domains.event_tracking.event_tracking_dependencies import (
+        get_event_tracking_service,
+    )
+    from app.main import app
+
+    mock_service = MagicMock()
+    mock_service.collect_event.side_effect = RuntimeError("simulated failure")
+
+    app.dependency_overrides[get_event_tracking_service] = lambda: mock_service
+    try:
+        response = client.post(
+            "/api/v1/events",
+            json={
+                "event_type": "create_course_clicked",
+                "session_id": "sess_01HZ",
+                "page_url": "https://example.com/planner",
+            },
+        )
+        assert response.status_code == 500
+        payload = _error_payload(response)
+        assert payload["code"] == "EVENT_TRACKING_INTERNAL_ERROR"
+    finally:
+        app.dependency_overrides.clear()

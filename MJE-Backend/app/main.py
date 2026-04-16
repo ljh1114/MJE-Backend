@@ -29,9 +29,23 @@ def create_app() -> FastAPI:
     ) -> JSONResponse:
         if request.url.path.startswith("/api/v1/events"):
             first_error = exc.errors()[0]
+            if first_error.get("type") == "json_invalid":
+                error_response = EventTrackingErrorResponse(
+                    code="EVENT_TRACKING_INVALID_REQUEST",
+                    message="Event tracking request body is not valid JSON.",
+                    field="body",
+                    invalid_value=None,
+                )
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content=error_response.model_dump(),
+                )
+
             field_name = (
                 first_error["loc"][-1] if first_error.get("loc") else None
             )
+            if isinstance(field_name, int):
+                field_name = "body"
             invalid_value = None
             if isinstance(first_error.get("input"), (str, int, float, bool)):
                 invalid_value = str(first_error["input"])
