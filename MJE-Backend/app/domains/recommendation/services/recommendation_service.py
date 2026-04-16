@@ -14,6 +14,7 @@ from app.domains.recommendation.entities.recommendation import Recommendation
 from app.domains.recommendation.exceptions.recommendation_exceptions import (
     RecommendationCourseIdentifierError,
     RecommendationCourseIdentifierFormatError,
+    RecommendationInvalidCourseResultError,
     RecommendationInvalidInputError,
 )
 from app.domains.recommendation.services.recommendation_rule_engine import (
@@ -256,6 +257,7 @@ class RecommendationService:
         course_detail = self._COURSE_DETAILS.get(course_id)
         if course_detail is None:
             raise RecommendationCourseIdentifierError(course_id=course_id)
+        self._validate_course_detail_result(course_detail)
         return course_detail
 
     def _normalize_value(
@@ -276,3 +278,22 @@ class RecommendationService:
             field_value=raw_value,
             allowed_values=sorted(set(aliases.values())),
         )
+
+    def _validate_course_detail_result(self, course_detail: CourseDetail) -> None:
+        if not course_detail.detail_items:
+            raise RecommendationInvalidCourseResultError(
+                course_id=course_detail.course_id,
+                reason="detail items are missing",
+            )
+
+        component_types = {item.component_type for item in course_detail.detail_items}
+        required_component_types = {"restaurant", "cafe", "activity"}
+        missing_component_types = required_component_types - component_types
+        if missing_component_types:
+            raise RecommendationInvalidCourseResultError(
+                course_id=course_detail.course_id,
+                reason=(
+                    "missing required components: "
+                    + ", ".join(sorted(missing_component_types))
+                ),
+            )

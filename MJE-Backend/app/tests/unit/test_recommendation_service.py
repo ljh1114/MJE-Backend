@@ -7,9 +7,12 @@ from app.domains.recommendation.dtos.recommendation_request import Recommendatio
 from app.domains.recommendation.entities.recommendation_condition import (
     RecommendationCondition,
 )
+from app.domains.recommendation.entities.course_detail import CourseDetail
+from app.domains.recommendation.entities.course_detail_item import CourseDetailItem
 from app.domains.recommendation.exceptions.recommendation_exceptions import (
     RecommendationCourseIdentifierError,
     RecommendationCourseIdentifierFormatError,
+    RecommendationInvalidCourseResultError,
     RecommendationInvalidInputError,
     RecommendationRuleNotMatchedError,
 )
@@ -157,3 +160,30 @@ def test_get_course_detail_raises_for_invalid_identifier() -> None:
 
     with pytest.raises(RecommendationCourseIdentifierError):
         service.get_course_detail("invalid-course-id")
+
+
+def test_get_course_detail_raises_for_invalid_course_result() -> None:
+    service = RecommendationService()
+    service._COURSE_DETAILS["course-invalid-main"] = CourseDetail(
+        course_id="course-invalid-main",
+        course_title="비정상 코스",
+        recommendation_id="recommendation-template-invalid-main",
+        condition=RecommendationCondition(
+            place="gangnam",
+            time_slot="evening",
+            activity_type="dining",
+            transportation="car",
+        ),
+        detail_items=[
+            CourseDetailItem(
+                sequence=1,
+                component_type="restaurant",
+                name="테스트 식당",
+                description="식당만 있는 비정상 데이터",
+                keywords=["테스트"],
+            )
+        ],
+    )
+
+    with pytest.raises(RecommendationInvalidCourseResultError):
+        service.get_course_detail("course-invalid-main")

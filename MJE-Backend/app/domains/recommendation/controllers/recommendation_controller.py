@@ -23,6 +23,7 @@ from app.domains.recommendation.dtos.recommendation_response import (
 from app.domains.recommendation.exceptions.recommendation_exceptions import (
     RecommendationCourseIdentifierError,
     RecommendationCourseIdentifierFormatError,
+    RecommendationInvalidCourseResultError,
     RecommendationInvalidInputError,
     RecommendationRuleNotMatchedError,
 )
@@ -141,6 +142,16 @@ def get_recommendation_course_detail(
             ).model_dump(),
         ) from error
     except RecommendationCourseIdentifierError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=RecommendationErrorResponse(
+                code=error.error_code,
+                message=str(error),
+                field="course_id",
+                invalid_value=error.course_id,
+            ).model_dump(),
+        ) from error
+    except RecommendationInvalidCourseResultError as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=RecommendationErrorResponse(

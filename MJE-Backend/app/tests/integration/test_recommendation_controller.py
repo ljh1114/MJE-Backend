@@ -1,5 +1,13 @@
 from fastapi.testclient import TestClient
 
+from app.domains.recommendation.controllers.recommendation_controller import (
+    recommendation_service,
+)
+from app.domains.recommendation.entities.course_detail import CourseDetail
+from app.domains.recommendation.entities.course_detail_item import CourseDetailItem
+from app.domains.recommendation.entities.recommendation_condition import (
+    RecommendationCondition,
+)
 from app.main import app
 
 client = TestClient(app)
@@ -151,5 +159,37 @@ def test_get_recommendation_course_detail_returns_error_for_invalid_identifier_f
     assert (
         response.json()["detail"]["code"]
         == "RECOMMENDATION_COURSE_IDENTIFIER_INVALID_FORMAT"
+    )
+    assert response.json()["detail"]["field"] == "course_id"
+
+
+def test_get_recommendation_course_detail_returns_error_for_invalid_course_result() -> None:
+    recommendation_service._COURSE_DETAILS["course-invalid-main"] = CourseDetail(
+        course_id="course-invalid-main",
+        course_title="비정상 코스",
+        recommendation_id="recommendation-template-invalid-main",
+        condition=RecommendationCondition(
+            place="gangnam",
+            time_slot="evening",
+            activity_type="dining",
+            transportation="car",
+        ),
+        detail_items=[
+            CourseDetailItem(
+                sequence=1,
+                component_type="restaurant",
+                name="테스트 식당",
+                description="식당만 있는 비정상 데이터",
+                keywords=["테스트"],
+            )
+        ],
+    )
+
+    response = client.get("/api/v1/recommendations/courses/course-invalid-main/details")
+
+    assert response.status_code == 400
+    assert (
+        response.json()["detail"]["code"]
+        == "RECOMMENDATION_INVALID_COURSE_RESULT"
     )
     assert response.json()["detail"]["field"] == "course_id"

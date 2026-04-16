@@ -42,3 +42,15 @@ class RecommendationCourseIdentifierFormatError(RecommendationError):
             "Recommendation course identifier must match the format "
             "'course-<place>-main'."
         )
+
+
+class RecommendationInvalidCourseResultError(RecommendationError):
+    """Raised when stored course result is incomplete or invalid."""
+
+    def __init__(self, course_id: str, reason: str) -> None:
+        self.course_id = course_id
+        self.reason = reason
+        self.error_code = "RECOMMENDATION_INVALID_COURSE_RESULT"
+        super().__init__(
+            f"Recommendation course result is invalid for '{course_id}': {reason}."
+        )
