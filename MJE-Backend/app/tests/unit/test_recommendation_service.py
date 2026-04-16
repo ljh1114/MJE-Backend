@@ -1,9 +1,15 @@
 import pytest
 
 from app.domains.recommendation.dtos.recommendation_request import RecommendationRequest
+from app.domains.recommendation.entities.recommendation_condition import (
+    RecommendationCondition,
+)
 from app.domains.recommendation.exceptions.recommendation_exceptions import (
     RecommendationInvalidInputError,
     RecommendationRuleNotMatchedError,
+)
+from app.domains.recommendation.services.recommendation_rule_engine import (
+    RecommendationRuleEngine,
 )
 from app.domains.recommendation.services.recommendation_service import (
     RecommendationService,
@@ -25,6 +31,38 @@ def test_generate_recommendation_creates_expected_shape() -> None:
     assert result.main_course.course_type == "main"
     assert len(result.secondary_courses) == 2
     assert all(course.keywords for course in result.secondary_courses)
+
+
+def test_rule_engine_matches_rule_from_condition() -> None:
+    rule_engine = RecommendationRuleEngine()
+
+    rule = rule_engine.match_rule(
+        RecommendationCondition(
+            place="gangnam",
+            time_slot="evening",
+            activity_type="dining",
+            transportation="car",
+        )
+    )
+
+    assert rule.rule_name == "gangnam_evening_dining_car"
+    assert rule.main_course_template.place_name == "강남 와인 다이닝 거리"
+
+
+def test_rule_engine_blocks_exceptional_night_public_transport_case() -> None:
+    rule_engine = RecommendationRuleEngine()
+
+    with pytest.raises(RecommendationRuleNotMatchedError) as error:
+        rule_engine.match_rule(
+            RecommendationCondition(
+                place="hongdae",
+                time_slot="night",
+                activity_type="activity",
+                transportation="public_transport",
+            )
+        )
+
+    assert "Late-night" in str(error.value)
 
 
 def test_interpret_condition_normalizes_alias_values() -> None:

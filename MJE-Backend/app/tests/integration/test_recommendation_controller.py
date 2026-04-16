@@ -24,6 +24,23 @@ def test_create_recommendation_returns_main_and_secondary_courses() -> None:
     assert len(payload["secondary_courses"]) == 2
 
 
+def test_create_recommendation_returns_rule_based_course_for_car_activity() -> None:
+    response = client.post(
+        "/api/v1/recommendations",
+        json={
+            "place": "홍대",
+            "time_slot": "evening",
+            "activity_type": "activity",
+            "transportation": "car",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["main_course"]["title"] == "홍대 액티비티 드라이브 데이트"
+    assert payload["secondary_courses"][0]["course_type"] == "secondary"
+
+
 def test_create_recommendation_returns_error_for_invalid_input() -> None:
     response = client.post(
         "/api/v1/recommendations",
@@ -44,10 +61,10 @@ def test_create_recommendation_returns_error_when_rule_not_matched() -> None:
     response = client.post(
         "/api/v1/recommendations",
         json={
-            "place": "강남",
-            "time_slot": "아침",
+            "place": "홍대",
+            "time_slot": "밤",
             "activity_type": "액티비티",
-            "transportation": "자차",
+            "transportation": "대중교통",
         },
     )
 
