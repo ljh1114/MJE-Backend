@@ -2,4 +2,5 @@ from pydantic import BaseModel
 
 
 class EventResponse(BaseModel):
-    accepted: bool = True
+    event_id: str
+    status: str
