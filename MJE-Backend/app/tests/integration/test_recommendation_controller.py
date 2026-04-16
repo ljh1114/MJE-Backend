@@ -109,9 +109,23 @@ def test_get_recommendation_course_detail_returns_detail_items() -> None:
 
     assert response.status_code == 200
     payload = response.json()
+    assert payload["recommendation_id"] == "recommendation-template-gangnam-main"
     assert payload["course_id"] == "course-gangnam-main"
     assert payload["course_title"] == "강남 감성 다이닝 데이트"
+    assert payload["request_condition"] == {
+        "place": "gangnam",
+        "time_slot": "evening",
+        "activity_type": "dining",
+        "transportation": "car",
+    }
+    assert payload["summary"] == {
+        "total_detail_items": 3,
+        "restaurant_count": 1,
+        "cafe_count": 1,
+        "activity_count": 1,
+    }
     assert len(payload["detail_items"]) == 3
+    assert payload["detail_items"][0]["sequence"] == 1
     assert {item["component_type"] for item in payload["detail_items"]} == {
         "restaurant",
         "cafe",

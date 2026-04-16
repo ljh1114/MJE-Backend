@@ -5,7 +5,9 @@ from app.domains.recommendation.dtos.recommendation_error_response import (
 )
 from app.domains.recommendation.dtos.recommendation_course_detail_response import (
     CourseDetailItemResponse,
+    RecommendationCourseDetailConditionResponse,
     RecommendationCourseDetailResponse,
+    RecommendationCourseDetailSummaryResponse,
 )
 from app.domains.recommendation.dtos.recommendation_request import RecommendationRequest
 from app.domains.recommendation.dtos.recommendation_response import (
@@ -119,16 +121,38 @@ def get_recommendation_course_detail(
             ).model_dump(),
         ) from error
 
+    detail_items = [
+        CourseDetailItemResponse(
+            sequence=item.sequence,
+            component_type=item.component_type,
+            name=item.name,
+            description=item.description,
+            keywords=item.keywords,
+        )
+        for item in course_detail.detail_items
+    ]
+
     return RecommendationCourseDetailResponse(
+        recommendation_id=course_detail.recommendation_id,
         course_id=course_detail.course_id,
         course_title=course_detail.course_title,
-        detail_items=[
-            CourseDetailItemResponse(
-                component_type=item.component_type,
-                name=item.name,
-                description=item.description,
-                keywords=item.keywords,
-            )
-            for item in course_detail.detail_items
-        ],
+        request_condition=RecommendationCourseDetailConditionResponse(
+            place=course_detail.condition.place,
+            time_slot=course_detail.condition.time_slot,
+            activity_type=course_detail.condition.activity_type,
+            transportation=course_detail.condition.transportation,
+        ),
+        summary=RecommendationCourseDetailSummaryResponse(
+            total_detail_items=len(detail_items),
+            restaurant_count=sum(
+                1 for item in detail_items if item.component_type == "restaurant"
+            ),
+            cafe_count=sum(
+                1 for item in detail_items if item.component_type == "cafe"
+            ),
+            activity_count=sum(
+                1 for item in detail_items if item.component_type == "activity"
+            ),
+        ),
+        detail_items=detail_items,
     )

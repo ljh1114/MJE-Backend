@@ -122,7 +122,10 @@ def test_get_course_detail_returns_detail_list() -> None:
     result = service.get_course_detail("course-seongsu-main")
 
     assert result.course_id == "course-seongsu-main"
+    assert result.recommendation_id == "recommendation-template-seongsu-main"
+    assert result.condition.place == "seongsu"
     assert len(result.detail_items) == 3
+    assert result.detail_items[0].sequence == 1
     assert result.detail_items[0].component_type == "cafe"
 
 
