@@ -6,6 +6,7 @@ from app.domains.recommendation.dtos.recommendation_response import (
     RecommendationResponse,
 )
 from app.domains.recommendation.exceptions.recommendation_exceptions import (
+    RecommendationInvalidInputError,
     RecommendationRuleNotMatchedError,
 )
 from app.domains.recommendation.services.recommendation_service import (
@@ -22,6 +23,16 @@ def create_recommendation(
 ) -> RecommendationResponse:
     try:
         recommendation = recommendation_service.generate_recommendation(request)
+    except RecommendationInvalidInputError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "RECOMMENDATION_INVALID_INPUT",
+                "message": str(error),
+                "field": error.field_name,
+                "allowed_values": error.allowed_values,
+            },
+        ) from error
     except RecommendationRuleNotMatchedError as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

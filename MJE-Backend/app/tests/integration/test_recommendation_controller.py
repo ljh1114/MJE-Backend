@@ -9,10 +9,10 @@ def test_create_recommendation_returns_main_and_secondary_courses() -> None:
     response = client.post(
         "/api/v1/recommendations",
         json={
-            "place": "gangnam",
-            "time_slot": "evening",
-            "activity_type": "dining",
-            "transportation": "car",
+            "place": "강남",
+            "time_slot": "저녁",
+            "activity_type": "식사",
+            "transportation": "자차",
         },
     )
 
@@ -24,14 +24,30 @@ def test_create_recommendation_returns_main_and_secondary_courses() -> None:
     assert len(payload["secondary_courses"]) == 2
 
 
+def test_create_recommendation_returns_error_for_invalid_input() -> None:
+    response = client.post(
+        "/api/v1/recommendations",
+        json={
+            "place": "busan",
+            "time_slot": "저녁",
+            "activity_type": "식사",
+            "transportation": "자차",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "RECOMMENDATION_INVALID_INPUT"
+    assert response.json()["detail"]["field"] == "place"
+
+
 def test_create_recommendation_returns_error_when_rule_not_matched() -> None:
     response = client.post(
         "/api/v1/recommendations",
         json={
-            "place": "gangnam",
-            "time_slot": "morning",
-            "activity_type": "activity",
-            "transportation": "car",
+            "place": "강남",
+            "time_slot": "아침",
+            "activity_type": "액티비티",
+            "transportation": "자차",
         },
     )
 
