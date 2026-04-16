@@ -1,11 +1,15 @@
 import pytest
 
+from app.domains.recommendation.dtos.recommendation_course_detail_request import (
+    RecommendationCourseDetailRequest,
+)
 from app.domains.recommendation.dtos.recommendation_request import RecommendationRequest
 from app.domains.recommendation.entities.recommendation_condition import (
     RecommendationCondition,
 )
 from app.domains.recommendation.exceptions.recommendation_exceptions import (
     RecommendationCourseIdentifierError,
+    RecommendationCourseIdentifierFormatError,
     RecommendationInvalidInputError,
     RecommendationRuleNotMatchedError,
 )
@@ -127,6 +131,25 @@ def test_get_course_detail_returns_detail_list() -> None:
     assert len(result.detail_items) == 3
     assert result.detail_items[0].sequence == 1
     assert result.detail_items[0].component_type == "cafe"
+
+
+def test_validate_course_detail_request_returns_normalized_identifier() -> None:
+    service = RecommendationService()
+
+    result = service.validate_course_detail_request(
+        RecommendationCourseDetailRequest(course_id=" COURSE-GANGNAM-MAIN ")
+    )
+
+    assert result == "course-gangnam-main"
+
+
+def test_validate_course_detail_request_raises_for_invalid_format() -> None:
+    service = RecommendationService()
+
+    with pytest.raises(RecommendationCourseIdentifierFormatError):
+        service.validate_course_detail_request(
+            RecommendationCourseDetailRequest(course_id="gangnam-main")
+        )
 
 
 def test_get_course_detail_raises_for_invalid_identifier() -> None:

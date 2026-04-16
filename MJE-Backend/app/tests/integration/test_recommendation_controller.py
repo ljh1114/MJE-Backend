@@ -142,3 +142,14 @@ def test_get_recommendation_course_detail_returns_error_for_invalid_identifier()
         == "RECOMMENDATION_COURSE_IDENTIFIER_INVALID"
     )
     assert response.json()["detail"]["field"] == "course_id"
+
+
+def test_get_recommendation_course_detail_returns_error_for_invalid_identifier_format() -> None:
+    response = client.get("/api/v1/recommendations/courses/invalid-format/details")
+
+    assert response.status_code == 400
+    assert (
+        response.json()["detail"]["code"]
+        == "RECOMMENDATION_COURSE_IDENTIFIER_INVALID_FORMAT"
+    )
+    assert response.json()["detail"]["field"] == "course_id"

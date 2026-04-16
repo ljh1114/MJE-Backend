@@ -1,7 +1,11 @@
+import re
 from uuid import uuid4
 
 from app.domains.recommendation.entities.course_detail import CourseDetail
 from app.domains.recommendation.entities.course_detail_item import CourseDetailItem
+from app.domains.recommendation.dtos.recommendation_course_detail_request import (
+    RecommendationCourseDetailRequest,
+)
 from app.domains.recommendation.dtos.recommendation_request import RecommendationRequest
 from app.domains.recommendation.entities.recommendation_condition import (
     RecommendationCondition,
@@ -9,6 +13,7 @@ from app.domains.recommendation.entities.recommendation_condition import (
 from app.domains.recommendation.entities.recommendation import Recommendation
 from app.domains.recommendation.exceptions.recommendation_exceptions import (
     RecommendationCourseIdentifierError,
+    RecommendationCourseIdentifierFormatError,
     RecommendationInvalidInputError,
 )
 from app.domains.recommendation.services.recommendation_rule_engine import (
@@ -18,6 +23,8 @@ from app.domains.recommendation.services.recommendation_rule_engine import (
 
 class RecommendationService:
     """Use-case orchestration for recommendation domain."""
+
+    _COURSE_ID_PATTERN = re.compile(r"^course-[a-z]+-main$")
 
     _COURSE_DETAILS: dict[str, CourseDetail] = {
         "course-gangnam-main": CourseDetail(
@@ -236,9 +243,17 @@ class RecommendationService:
             rule=matched_rule,
         )
 
+    def validate_course_detail_request(
+        self, request: RecommendationCourseDetailRequest
+    ) -> str:
+        if self._COURSE_ID_PATTERN.fullmatch(request.course_id) is None:
+            raise RecommendationCourseIdentifierFormatError(
+                course_id=request.course_id
+            )
+        return request.course_id
+
     def get_course_detail(self, course_id: str) -> CourseDetail:
-        normalized_course_id = course_id.strip()
-        course_detail = self._COURSE_DETAILS.get(normalized_course_id)
+        course_detail = self._COURSE_DETAILS.get(course_id)
         if course_detail is None:
             raise RecommendationCourseIdentifierError(course_id=course_id)
         return course_detail

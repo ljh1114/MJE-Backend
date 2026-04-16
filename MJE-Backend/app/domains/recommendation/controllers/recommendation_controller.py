@@ -1,5 +1,9 @@
 from fastapi import APIRouter, HTTPException, status
+from pydantic import ValidationError
 
+from app.domains.recommendation.dtos.recommendation_course_detail_request import (
+    RecommendationCourseDetailRequest,
+)
 from app.domains.recommendation.dtos.recommendation_error_response import (
     RecommendationErrorResponse,
 )
@@ -18,6 +22,7 @@ from app.domains.recommendation.dtos.recommendation_response import (
 )
 from app.domains.recommendation.exceptions.recommendation_exceptions import (
     RecommendationCourseIdentifierError,
+    RecommendationCourseIdentifierFormatError,
     RecommendationInvalidInputError,
     RecommendationRuleNotMatchedError,
 )
@@ -109,7 +114,32 @@ def get_recommendation_course_detail(
     course_id: str,
 ) -> RecommendationCourseDetailResponse:
     try:
-        course_detail = recommendation_service.get_course_detail(course_id)
+        request = RecommendationCourseDetailRequest(course_id=course_id)
+        normalized_course_id = recommendation_service.validate_course_detail_request(
+            request
+        )
+        course_detail = recommendation_service.get_course_detail(normalized_course_id)
+    except ValidationError as error:
+        first_error = error.errors()[0]
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=RecommendationErrorResponse(
+                code="RECOMMENDATION_COURSE_IDENTIFIER_INVALID_REQUEST",
+                message="Recommendation course detail request is invalid.",
+                field="course_id",
+                invalid_value=str(first_error.get("input", course_id)),
+            ).model_dump(),
+        ) from error
+    except RecommendationCourseIdentifierFormatError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=RecommendationErrorResponse(
+                code=error.error_code,
+                message=str(error),
+                field="course_id",
+                invalid_value=error.course_id,
+            ).model_dump(),
+        ) from error
     except RecommendationCourseIdentifierError as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

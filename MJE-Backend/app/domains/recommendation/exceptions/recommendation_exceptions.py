@@ -30,3 +30,15 @@ class RecommendationCourseIdentifierError(RecommendationError):
         self.course_id = course_id
         self.error_code = "RECOMMENDATION_COURSE_IDENTIFIER_INVALID"
         super().__init__(f"Invalid recommendation course identifier: '{course_id}'.")
+
+
+class RecommendationCourseIdentifierFormatError(RecommendationError):
+    """Raised when course identifier format is invalid."""
+
+    def __init__(self, course_id: str) -> None:
+        self.course_id = course_id
+        self.error_code = "RECOMMENDATION_COURSE_IDENTIFIER_INVALID_FORMAT"
+        super().__init__(
+            "Recommendation course identifier must match the format "
+            "'course-<place>-main'."
+        )
