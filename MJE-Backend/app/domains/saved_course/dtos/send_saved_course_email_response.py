@@ -7,3 +7,4 @@ class SendSavedCourseEmailResponse(BaseModel):
     recipient_email: str
     course_id: str
     course_title: str
+    failure_reason: str | None = None

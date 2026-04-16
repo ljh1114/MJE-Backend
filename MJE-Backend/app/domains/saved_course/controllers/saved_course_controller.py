@@ -18,7 +18,7 @@ saved_course_service = SavedCourseService()
 @router.post(
     "/email",
     response_model=SendSavedCourseEmailResponse,
-    status_code=status.HTTP_202_ACCEPTED,
+    status_code=status.HTTP_200_OK,
     responses={400: {"model": SavedCourseErrorResponse}},
 )
 def send_saved_course_email(

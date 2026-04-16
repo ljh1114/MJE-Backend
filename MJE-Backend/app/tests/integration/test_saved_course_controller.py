@@ -15,10 +15,10 @@ def test_send_saved_course_email_accepts_request() -> None:
         },
     )
 
-    assert response.status_code == 202
+    assert response.status_code == 200
 
     payload = response.json()
-    assert payload["status"] == "requested"
+    assert payload["status"] == "sent"
     assert payload["recipient_email"] == "user@example.com"
     assert payload["course_id"] == "course-gangnam-main"
     assert payload["course_title"] == "강남 감성 다이닝 데이트"
