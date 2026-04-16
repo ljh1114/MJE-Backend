@@ -147,7 +147,7 @@ def test_get_recommendation_course_detail_returns_error_for_invalid_identifier()
     assert response.status_code == 400
     assert (
         response.json()["detail"]["code"]
-        == "RECOMMENDATION_COURSE_IDENTIFIER_INVALID"
+        == "RECOMMENDATION_COURSE_IDENTIFIER_INVALID_FORMAT"
     )
     assert response.json()["detail"]["field"] == "course_id"
 
