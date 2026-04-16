@@ -29,6 +29,22 @@ def test_collect_event_endpoint_accepts_event() -> None:
     assert payload["event_id"]
 
 
+def test_collect_event_endpoint_accepts_explore_click_event() -> None:
+    response = client.post(
+        "/api/v1/events",
+        json={
+            "event_type": "date_course_explore_clicked",
+            "session_id": "sess_01HZ",
+            "page_url": "https://example.com/explore",
+        },
+    )
+
+    assert response.status_code == 202
+    payload = response.json()
+    assert payload["status"] == "accepted"
+    assert payload["event_id"]
+
+
 def test_collect_event_endpoint_rejects_invalid_payload() -> None:
     response = client.post(
         "/api/v1/events",

@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, HttpUrl
 class EventRequest(BaseModel):
     """Client event payload for the currently supported tracking events."""
 
-    event_type: Literal["create_course_clicked"]
+    event_type: Literal["create_course_clicked", "date_course_explore_clicked"]
     session_id: str = Field(
         ...,
         min_length=1,
@@ -25,7 +25,12 @@ class EventRequest(BaseModel):
                     "event_type": "create_course_clicked",
                     "session_id": "sess_01HZXYZ",
                     "page_url": "https://example.com/planner",
-                }
+                },
+                {
+                    "event_type": "date_course_explore_clicked",
+                    "session_id": "sess_01HZXYZ",
+                    "page_url": "https://example.com/explore",
+                },
             ]
         }
     }

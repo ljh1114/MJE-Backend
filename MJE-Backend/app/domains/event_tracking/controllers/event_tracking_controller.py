@@ -1,9 +1,12 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.domains.event_tracking.dtos.event_request import EventRequest
 from app.domains.event_tracking.dtos.event_response import EventResponse
 from app.domains.event_tracking.dtos.event_tracking_error_response import (
     EventTrackingErrorResponse,
+)
+from app.domains.event_tracking.event_tracking_dependencies import (
+    get_event_tracking_service,
 )
 from app.domains.event_tracking.exceptions.event_tracking_exceptions import (
     EventTrackingInvalidInputError,
@@ -13,7 +16,6 @@ from app.domains.event_tracking.services.event_tracking_service import (
 )
 
 router = APIRouter(prefix="/api/v1/events", tags=["event_tracking"])
-event_tracking_service = EventTrackingService()
 
 
 @router.post(
@@ -24,6 +26,7 @@ event_tracking_service = EventTrackingService()
 )
 def collect_event(
     request: EventRequest,
+    event_tracking_service: EventTrackingService = Depends(get_event_tracking_service),
 ) -> EventResponse:
     try:
         return event_tracking_service.collect_event(request)

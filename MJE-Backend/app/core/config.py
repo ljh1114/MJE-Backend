@@ -5,6 +5,9 @@ class Settings(BaseSettings):
     app_name: str = "MJE Backend"
     environment: str = "local"
 
+    # e.g. postgresql+psycopg://user:pass@host:5432/dbname — unset means events are not persisted
+    database_url: str | None = None
+
     mail_mode: str = "mock"  # mock | smtp
     mail_from: str = "no-reply@mje.local"
     smtp_host: str | None = None
