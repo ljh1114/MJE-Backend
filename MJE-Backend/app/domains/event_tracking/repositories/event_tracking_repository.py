@@ -5,11 +5,12 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.domains.event_tracking.entities.tracking_event import TrackingEvent
 from app.domains.event_tracking.exceptions.event_tracking_exceptions import (
+    EventTrackingDuplicateEventError,
     EventTrackingPersistenceError,
 )
 from app.domains.event_tracking.exploration_judgment import (
@@ -32,6 +33,16 @@ def _attempt_id_from_row(row: TrackingEventRow) -> str | None:
         s = row.attempt_id.strip()
         return s if s else None
     return extract_attempt_id_from_payload(dict(row.event_payload))
+
+
+def _is_unique_constraint_violation(exc: IntegrityError) -> bool:
+    orig = getattr(exc, "orig", None)
+    if orig is None:
+        return False
+    if getattr(orig, "pgcode", None) == "23505":
+        return True
+    msg = str(orig).lower()
+    return "unique" in msg
 
 
 def _row_to_entity(row: TrackingEventRow) -> TrackingEvent:
@@ -90,6 +101,10 @@ class SqlAlchemyEventTrackingRepository(EventTrackingRepository):
             with Session(self._engine) as session:
                 session.add(row)
                 session.commit()
+        except IntegrityError as exc:
+            if _is_unique_constraint_violation(exc):
+                raise EventTrackingDuplicateEventError() from exc
+            raise EventTrackingPersistenceError() from exc
         except SQLAlchemyError as exc:
             raise EventTrackingPersistenceError() from exc
 

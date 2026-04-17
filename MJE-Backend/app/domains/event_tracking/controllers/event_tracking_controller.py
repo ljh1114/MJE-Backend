@@ -11,6 +11,7 @@ from app.domains.event_tracking.event_tracking_dependencies import (
     get_event_tracking_service,
 )
 from app.domains.event_tracking.exceptions.event_tracking_exceptions import (
+    EventTrackingDuplicateEventError,
     EventTrackingInvalidInputError,
     EventTrackingPersistenceError,
 )
@@ -29,6 +30,7 @@ router = APIRouter(prefix="/api/v1/events", tags=["event_tracking"])
     status_code=status.HTTP_202_ACCEPTED,
     responses={
         400: {"model": EventTrackingErrorResponse},
+        409: {"model": EventTrackingErrorResponse},
         500: {"model": EventTrackingErrorResponse},
         503: {"model": EventTrackingErrorResponse},
     },
@@ -49,6 +51,14 @@ def collect_event(
                 message=str(error),
                 field=error.field_name,
                 invalid_value=error.field_value,
+            ).model_dump(),
+        ) from error
+    except EventTrackingDuplicateEventError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=EventTrackingErrorResponse(
+                code=error.error_code,
+                message=str(error),
             ).model_dump(),
         ) from error
     except EventTrackingPersistenceError as error:

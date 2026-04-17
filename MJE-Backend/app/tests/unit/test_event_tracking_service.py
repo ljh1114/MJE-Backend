@@ -34,6 +34,7 @@ def test_collect_event_returns_accepted_response() -> None:
             event_type="create_course_clicked",
             session_id="sess_01HZ",
             page_url="https://example.com/planner",
+            attempt_id="att_01HZXY",
         )
     )
 
@@ -50,6 +51,7 @@ def test_collect_event_delegates_to_repository() -> None:
             event_type="date_course_explore_clicked",
             session_id="sess_01HZ",
             page_url="https://example.com/explore",
+            attempt_id=None,
         )
     )
 
@@ -69,9 +71,61 @@ def test_collect_event_rejects_invalid_session_id() -> None:
                 event_type="create_course_clicked",
                 session_id="bad",
                 page_url="https://example.com/planner",
+                attempt_id="att_01HZXY",
             )
         )
     except EventTrackingInvalidInputError as error:
         assert error.field_name == "session_id"
+    else:
+        raise AssertionError("Expected EventTrackingInvalidInputError")
+
+
+def test_collect_event_requires_attempt_id_for_create() -> None:
+    service = EventTrackingService(NullEventTrackingRepository())
+    try:
+        service.collect_event(
+            EventRequest(
+                event_type="create_course_clicked",
+                session_id="sess_01HZ",
+                page_url="https://example.com/planner",
+                attempt_id=None,
+            )
+        )
+    except EventTrackingInvalidInputError as error:
+        assert error.field_name == "attempt_id"
+    else:
+        raise AssertionError("Expected EventTrackingInvalidInputError")
+
+
+def test_collect_event_persists_save_course_with_attempt() -> None:
+    repository = RecordingEventTrackingRepository()
+    service = EventTrackingService(repository)
+    service.collect_event(
+        EventRequest(
+            event_type="save_course_clicked",
+            session_id="sess_01HZ",
+            page_url="https://example.com/planner",
+            attempt_id="att_01HZXY",
+        )
+    )
+    saved = repository.saved[0]
+    assert saved.event_type == "save_course_clicked"
+    assert saved.attempt_id == "att_01HZXY"
+    assert saved.event_payload["attempt_id"] == "att_01HZXY"
+
+
+def test_collect_event_rejects_attempt_id_on_explore() -> None:
+    service = EventTrackingService(NullEventTrackingRepository())
+    try:
+        service.collect_event(
+            EventRequest(
+                event_type="date_course_explore_clicked",
+                session_id="sess_01HZ",
+                page_url="https://example.com/explore",
+                attempt_id="att_01HZXY",
+            )
+        )
+    except EventTrackingInvalidInputError as error:
+        assert error.field_name == "attempt_id"
     else:
         raise AssertionError("Expected EventTrackingInvalidInputError")

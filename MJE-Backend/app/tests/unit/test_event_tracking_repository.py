@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.database import Base
 from app.domains.event_tracking.entities.tracking_event import TrackingEvent
 from app.domains.event_tracking.exceptions.event_tracking_exceptions import (
+    EventTrackingDuplicateEventError,
     EventTrackingPersistenceError,
 )
 from app.domains.event_tracking.repositories.event_tracking_repository import (
@@ -137,6 +138,6 @@ def test_sqlalchemy_repository_rejects_duplicate_save_click_same_attempt() -> No
     repo.save(first)
     try:
         repo.save(duplicate)
-    except EventTrackingPersistenceError:
+    except EventTrackingDuplicateEventError:
         return
-    raise AssertionError("Expected EventTrackingPersistenceError for duplicate save")
+    raise AssertionError("Expected EventTrackingDuplicateEventError for duplicate save")

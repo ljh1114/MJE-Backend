@@ -6,7 +6,11 @@ from pydantic import BaseModel, Field, HttpUrl
 class EventRequest(BaseModel):
     """Client event payload for the currently supported tracking events."""
 
-    event_type: Literal["create_course_clicked", "date_course_explore_clicked"]
+    event_type: Literal[
+        "create_course_clicked",
+        "date_course_explore_clicked",
+        "save_course_clicked",
+    ]
     session_id: str = Field(
         ...,
         min_length=1,
@@ -17,6 +21,14 @@ class EventRequest(BaseModel):
         ...,
         description="Full URL of the page where the event occurred.",
     )
+    attempt_id: str | None = Field(
+        default=None,
+        max_length=128,
+        description=(
+            "Required for create_course_clicked and save_course_clicked "
+            "(탐색 시도 단위 짝 맞추기)."
+        ),
+    )
 
     model_config = {
         "json_schema_extra": {
@@ -25,6 +37,13 @@ class EventRequest(BaseModel):
                     "event_type": "create_course_clicked",
                     "session_id": "sess_01HZXYZ",
                     "page_url": "https://example.com/planner",
+                    "attempt_id": "att_01HZXYZ",
+                },
+                {
+                    "event_type": "save_course_clicked",
+                    "session_id": "sess_01HZXYZ",
+                    "page_url": "https://example.com/planner",
+                    "attempt_id": "att_01HZXYZ",
                 },
                 {
                     "event_type": "date_course_explore_clicked",

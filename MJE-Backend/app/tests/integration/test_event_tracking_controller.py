@@ -20,6 +20,7 @@ def test_collect_event_endpoint_accepts_event() -> None:
             "event_type": "create_course_clicked",
             "session_id": "sess_01HZ",
             "page_url": "https://example.com/planner",
+            "attempt_id": "att_01HZXY",
         },
     )
 
@@ -98,6 +99,7 @@ def test_collect_event_endpoint_rejects_invalid_session_id_domain_rules() -> Non
             "event_type": "create_course_clicked",
             "session_id": "bad",
             "page_url": "https://example.com/planner",
+            "attempt_id": "att_01HZXY",
         },
     )
 
@@ -140,6 +142,7 @@ def test_collect_event_endpoint_persists_row_with_sqlite_repository_override() -
                 "event_type": "create_course_clicked",
                 "session_id": "sess_01HZ",
                 "page_url": "https://example.com/planner",
+                "attempt_id": "att_01HZXY",
             },
         )
         assert response.status_code == 202
@@ -151,6 +154,8 @@ def test_collect_event_endpoint_persists_row_with_sqlite_repository_override() -
         assert row.event_type == "create_course_clicked"
         assert row.session_id == "sess_01HZ"
         assert row.event_payload["page_url"] == "https://example.com/planner"
+        assert row.attempt_id == "att_01HZXY"
+        assert row.event_payload["attempt_id"] == "att_01HZXY"
     finally:
         app.dependency_overrides.clear()
 
@@ -185,6 +190,7 @@ def test_collect_event_endpoint_returns_503_when_persistence_fails() -> None:
                 "event_type": "create_course_clicked",
                 "session_id": "sess_01HZ",
                 "page_url": "https://example.com/planner",
+                "attempt_id": "att_01HZXY",
             },
         )
         assert response.status_code == 503
@@ -215,6 +221,7 @@ def test_collect_event_endpoint_rejects_wrong_type_for_page_url() -> None:
             "event_type": "create_course_clicked",
             "session_id": "sess_01HZ",
             "page_url": 12345,
+            "attempt_id": "att_01HZXY",
         },
     )
 
@@ -243,10 +250,95 @@ def test_collect_event_endpoint_returns_500_on_unexpected_service_failure() -> N
                 "event_type": "create_course_clicked",
                 "session_id": "sess_01HZ",
                 "page_url": "https://example.com/planner",
+                "attempt_id": "att_01HZXY",
             },
         )
         assert response.status_code == 500
         payload = _error_payload(response)
         assert payload["code"] == "EVENT_TRACKING_INTERNAL_ERROR"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_collect_event_endpoint_requires_attempt_id_for_exploration_start() -> None:
+    response = client.post(
+        "/api/v1/events",
+        json={
+            "event_type": "create_course_clicked",
+            "session_id": "sess_01HZ",
+            "page_url": "https://example.com/planner",
+        },
+    )
+    assert response.status_code == 400
+    payload = _error_payload(response)
+    assert payload["code"] == "EVENT_TRACKING_INVALID_INPUT"
+    assert payload["field"] == "attempt_id"
+
+
+def test_collect_event_endpoint_accepts_save_course_clicked() -> None:
+    response = client.post(
+        "/api/v1/events",
+        json={
+            "event_type": "save_course_clicked",
+            "session_id": "sess_01HZ",
+            "page_url": "https://example.com/planner",
+            "attempt_id": "att_01HZXY",
+        },
+    )
+    assert response.status_code == 202
+    assert response.json()["status"] == "accepted"
+
+
+def test_collect_event_endpoint_rejects_attempt_id_for_explore_click() -> None:
+    response = client.post(
+        "/api/v1/events",
+        json={
+            "event_type": "date_course_explore_clicked",
+            "session_id": "sess_01HZ",
+            "page_url": "https://example.com/explore",
+            "attempt_id": "att_01HZXY",
+        },
+    )
+    assert response.status_code == 400
+    payload = _error_payload(response)
+    assert payload["code"] == "EVENT_TRACKING_INVALID_INPUT"
+    assert payload["field"] == "attempt_id"
+
+
+def test_collect_event_endpoint_returns_409_on_duplicate_save_click() -> None:
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import StaticPool
+
+    from app.core.database import Base
+    from app.domains.event_tracking.event_tracking_dependencies import (
+        get_event_tracking_repository,
+    )
+    from app.domains.event_tracking.repositories.event_tracking_repository import (
+        SqlAlchemyEventTrackingRepository,
+    )
+    from app.main import app
+
+    engine = create_engine(
+        "sqlite://",
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
+    )
+    Base.metadata.create_all(engine)
+    repository = SqlAlchemyEventTrackingRepository(engine)
+
+    body = {
+        "event_type": "save_course_clicked",
+        "session_id": "sess_01HZ",
+        "page_url": "https://example.com/planner",
+        "attempt_id": "att_01HZXY",
+    }
+
+    app.dependency_overrides[get_event_tracking_repository] = lambda: repository
+    try:
+        assert client.post("/api/v1/events", json=body).status_code == 202
+        dup = client.post("/api/v1/events", json=body)
+        assert dup.status_code == 409
+        detail = _error_payload(dup)
+        assert detail["code"] == "EVENT_TRACKING_DUPLICATE_EVENT"
     finally:
         app.dependency_overrides.clear()
