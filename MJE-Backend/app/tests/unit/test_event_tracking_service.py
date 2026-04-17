@@ -19,6 +19,12 @@ class RecordingEventTrackingRepository(EventTrackingRepository):
     def save(self, event: TrackingEvent) -> None:
         self.saved.append(event)
 
+    def find_by_session_id(self, session_id: str) -> list[TrackingEvent]:
+        return sorted(
+            (e for e in self.saved if e.session_id == session_id),
+            key=lambda e: e.occurred_at,
+        )
+
 
 def test_collect_event_returns_accepted_response() -> None:
     service = EventTrackingService(NullEventTrackingRepository())

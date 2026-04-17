@@ -172,6 +172,9 @@ def test_collect_event_endpoint_returns_503_when_persistence_fails() -> None:
         def save(self, event: TrackingEvent) -> None:
             raise EventTrackingPersistenceError()
 
+        def find_by_session_id(self, session_id: str) -> list[TrackingEvent]:
+            return []
+
     app.dependency_overrides[get_event_tracking_repository] = (
         lambda: FailingRepository()
     )

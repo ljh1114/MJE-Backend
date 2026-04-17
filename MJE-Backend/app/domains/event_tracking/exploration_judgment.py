@@ -5,12 +5,16 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
+from app.domains.event_tracking.entities.session_exploration_result import (
+    SessionExplorationAttemptResult,
+)
 from app.domains.event_tracking.entities.tracking_event import TrackingEvent
 from app.domains.event_tracking.exploration_criteria import (
     ATTEMPT_ID_PAYLOAD_KEY,
     EXPLORATION_SAVE_CLICK_EVENT_TYPE,
     EXPLORATION_START_EVENT_TYPE,
     ExplorationOutcome,
+    is_exploration_flow_event_type,
 )
 
 
@@ -79,3 +83,38 @@ def extract_attempt_id_from_payload(payload: dict[str, Any]) -> str | None:
         s = raw.strip()
         return s if s else None
     return str(raw)
+
+
+def discover_exploration_attempt_ids(events: Sequence[TrackingEvent]) -> list[str]:
+    """세션 이벤트에서 탐색 성과 판단 대상 ``attempt_id`` 목록을 중복 없이, 발생 순으로 반환."""
+    ordered = sorted(events, key=lambda e: e.occurred_at)
+    seen: set[str] = set()
+    out: list[str] = []
+    for e in ordered:
+        if not is_exploration_flow_event_type(e.event_type):
+            continue
+        aid = _payload_attempt_id(e)
+        if aid is None or aid in seen:
+            continue
+        seen.add(aid)
+        out.append(aid)
+    return out
+
+
+def judge_session_exploration(
+    events: Sequence[TrackingEvent],
+) -> list[SessionExplorationAttemptResult]:
+    """한 세션에 속한 이벤트만으로 시도별 탐색 성과를 판단한다.
+
+    SC: 세션 단위로 식별 가능하도록, 시도는 ``attempt_id``로 묶는다.
+    ``attempt_id``가 없는 이벤트만 있는 경우 목록이 비어 있을 수 있다.
+    """
+    ordered = sorted(events, key=lambda e: e.occurred_at)
+    attempt_ids = discover_exploration_attempt_ids(ordered)
+    return [
+        SessionExplorationAttemptResult(
+            attempt_id=aid,
+            outcome=judge_outcome_for_attempt(ordered, attempt_id=aid),
+        )
+        for aid in attempt_ids
+    ]

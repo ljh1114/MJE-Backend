@@ -10,8 +10,10 @@ from app.domains.event_tracking.exploration_criteria import (
 )
 from app.domains.event_tracking.exploration_judgment import (
     classify_exploration_attempt,
+    discover_exploration_attempt_ids,
     extract_attempt_id_from_payload,
     judge_outcome_for_attempt,
+    judge_session_exploration,
 )
 
 
@@ -107,3 +109,65 @@ def test_judge_outcome_not_completed_without_save() -> None:
 def test_extract_attempt_id_from_payload() -> None:
     assert extract_attempt_id_from_payload({ATTEMPT_ID_PAYLOAD_KEY: "  x  "}) == "x"
     assert extract_attempt_id_from_payload({}) is None
+
+
+def test_discover_exploration_attempt_ids_order_by_occurred_at() -> None:
+    t0 = datetime(2026, 4, 17, 10, 0, tzinfo=timezone.utc)
+    t1 = datetime(2026, 4, 17, 11, 0, tzinfo=timezone.utc)
+    # 나중 시각에 먼저 시도한 attempt가 나오도록 입력 순서를 뒤집음
+    events = [
+        TrackingEvent(
+            id=uuid4(),
+            session_id="sess_x",
+            user_id=None,
+            event_type=EXPLORATION_START_EVENT_TYPE,
+            event_payload={ATTEMPT_ID_PAYLOAD_KEY: "second", "page_url": "https://e/a"},
+            occurred_at=t1,
+        ),
+        TrackingEvent(
+            id=uuid4(),
+            session_id="sess_x",
+            user_id=None,
+            event_type=EXPLORATION_START_EVENT_TYPE,
+            event_payload={ATTEMPT_ID_PAYLOAD_KEY: "first", "page_url": "https://e/b"},
+            occurred_at=t0,
+        ),
+    ]
+    assert discover_exploration_attempt_ids(events) == ["first", "second"]
+
+
+def test_judge_session_exploration_two_attempts() -> None:
+    t0 = datetime.now(timezone.utc)
+    base = "sess_one"
+    events = [
+        TrackingEvent(
+            id=uuid4(),
+            session_id=base,
+            user_id=None,
+            event_type=EXPLORATION_START_EVENT_TYPE,
+            event_payload={ATTEMPT_ID_PAYLOAD_KEY: "a1", "page_url": "https://e/p"},
+            occurred_at=t0,
+        ),
+        TrackingEvent(
+            id=uuid4(),
+            session_id=base,
+            user_id=None,
+            event_type=EXPLORATION_SAVE_CLICK_EVENT_TYPE,
+            event_payload={ATTEMPT_ID_PAYLOAD_KEY: "a1", "page_url": "https://e/p"},
+            occurred_at=t0,
+        ),
+        TrackingEvent(
+            id=uuid4(),
+            session_id=base,
+            user_id=None,
+            event_type=EXPLORATION_START_EVENT_TYPE,
+            event_payload={ATTEMPT_ID_PAYLOAD_KEY: "a2", "page_url": "https://e/p"},
+            occurred_at=t0,
+        ),
+    ]
+    results = judge_session_exploration(events)
+    assert len(results) == 2
+    assert results[0].attempt_id == "a1"
+    assert results[0].outcome == ExplorationOutcome.SUCCESS
+    assert results[1].attempt_id == "a2"
+    assert results[1].outcome == ExplorationOutcome.NOT_COMPLETED

@@ -10,6 +10,9 @@ from app.domains.event_tracking.repositories.event_tracking_repository import (
 from app.domains.event_tracking.services.event_tracking_service import (
     EventTrackingService,
 )
+from app.domains.event_tracking.services.exploration_judgment_service import (
+    ExplorationJudgmentService,
+)
 
 
 def get_event_tracking_repository() -> EventTrackingRepository:
@@ -22,3 +25,9 @@ def get_event_tracking_service(
     repository: EventTrackingRepository = Depends(get_event_tracking_repository),
 ) -> EventTrackingService:
     return EventTrackingService(repository)
+
+
+def get_exploration_judgment_service(
+    repository: EventTrackingRepository = Depends(get_event_tracking_repository),
+) -> ExplorationJudgmentService:
+    return ExplorationJudgmentService(repository)

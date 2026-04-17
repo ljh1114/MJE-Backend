@@ -61,3 +61,41 @@ def test_sqlalchemy_repository_maps_db_errors_to_domain_error() -> None:
     except EventTrackingPersistenceError:
         return
     raise AssertionError("Expected EventTrackingPersistenceError")
+
+
+def test_sqlalchemy_repository_find_by_session_id_ordered() -> None:
+    engine = create_engine(
+        "sqlite://",
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
+    )
+    Base.metadata.create_all(engine)
+    repo = SqlAlchemyEventTrackingRepository(engine)
+    sid = "sess_01HZ"
+    t_early = datetime(2026, 4, 17, 10, 0, tzinfo=timezone.utc)
+    t_late = datetime(2026, 4, 17, 11, 0, tzinfo=timezone.utc)
+    e1 = TrackingEvent(
+        id=uuid4(),
+        session_id=sid,
+        user_id=None,
+        event_type="create_course_clicked",
+        event_payload={"page_url": "https://example.com/p"},
+        occurred_at=t_late,
+    )
+    e0 = TrackingEvent(
+        id=uuid4(),
+        session_id=sid,
+        user_id=None,
+        event_type="date_course_explore_clicked",
+        event_payload={"page_url": "https://example.com/e"},
+        occurred_at=t_early,
+    )
+    repo.save(e1)
+    repo.save(e0)
+
+    found = repo.find_by_session_id(sid)
+    assert [e.event_type for e in found] == [
+        "date_course_explore_clicked",
+        "create_course_clicked",
+    ]
+    assert found[0].occurred_at < found[1].occurred_at
