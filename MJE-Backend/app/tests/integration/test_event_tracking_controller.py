@@ -175,7 +175,10 @@ def test_collect_event_endpoint_returns_503_when_persistence_fails() -> None:
 
     class FailingRepository(EventTrackingRepository):
         def save(self, event: TrackingEvent) -> None:
-            raise EventTrackingPersistenceError()
+            raise EventTrackingPersistenceError(
+                session_id=event.session_id,
+                event_type=event.event_type,
+            )
 
         def find_by_session_id(self, session_id: str) -> list[TrackingEvent]:
             return []
@@ -196,6 +199,8 @@ def test_collect_event_endpoint_returns_503_when_persistence_fails() -> None:
         assert response.status_code == 503
         payload = _error_payload(response)
         assert payload["code"] == "EVENT_TRACKING_PERSISTENCE_FAILED"
+        assert payload["session_id"] == "sess_01HZ"
+        assert payload["event_type"] == "create_course_clicked"
     finally:
         app.dependency_overrides.clear()
 
@@ -340,5 +345,8 @@ def test_collect_event_endpoint_returns_409_on_duplicate_save_click() -> None:
         assert dup.status_code == 409
         detail = _error_payload(dup)
         assert detail["code"] == "EVENT_TRACKING_DUPLICATE_EVENT"
+        assert detail["session_id"] == "sess_01HZ"
+        assert detail["attempt_id"] == "att_01HZXY"
+        assert detail["field"] == "attempt_id"
     finally:
         app.dependency_overrides.clear()

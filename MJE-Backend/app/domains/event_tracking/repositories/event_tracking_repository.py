@@ -103,10 +103,19 @@ class SqlAlchemyEventTrackingRepository(EventTrackingRepository):
                 session.commit()
         except IntegrityError as exc:
             if _is_unique_constraint_violation(exc):
-                raise EventTrackingDuplicateEventError() from exc
-            raise EventTrackingPersistenceError() from exc
+                raise EventTrackingDuplicateEventError(
+                    session_id=event.session_id,
+                    attempt_id=_resolve_attempt_id(event),
+                ) from exc
+            raise EventTrackingPersistenceError(
+                session_id=event.session_id,
+                event_type=event.event_type,
+            ) from exc
         except SQLAlchemyError as exc:
-            raise EventTrackingPersistenceError() from exc
+            raise EventTrackingPersistenceError(
+                session_id=event.session_id,
+                event_type=event.event_type,
+            ) from exc
 
     def find_by_session_id(self, session_id: str) -> list[TrackingEvent]:
         stmt = (
@@ -118,5 +127,5 @@ class SqlAlchemyEventTrackingRepository(EventTrackingRepository):
             with Session(self._engine) as session:
                 rows = session.scalars(stmt).all()
         except SQLAlchemyError as exc:
-            raise EventTrackingPersistenceError() from exc
+            raise EventTrackingPersistenceError(session_id=session_id) from exc
         return [_row_to_entity(r) for r in rows]

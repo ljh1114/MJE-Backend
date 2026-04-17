@@ -24,8 +24,16 @@ class EventTrackingInvalidInputError(EventTrackingError):
 class EventTrackingPersistenceError(EventTrackingError):
     """Raised when a valid event could not be written to the database."""
 
-    def __init__(self, message: str = "Failed to persist tracking event.") -> None:
+    def __init__(
+        self,
+        message: str = "Failed to persist tracking event.",
+        *,
+        session_id: str | None = None,
+        event_type: str | None = None,
+    ) -> None:
         self.error_code = "EVENT_TRACKING_PERSISTENCE_FAILED"
+        self.session_id = session_id
+        self.event_type = event_type
         super().__init__(message)
 
 
@@ -35,6 +43,11 @@ class EventTrackingDuplicateEventError(EventTrackingError):
     def __init__(
         self,
         message: str = "This exploration event was already recorded for the session and attempt.",
+        *,
+        session_id: str | None = None,
+        attempt_id: str | None = None,
     ) -> None:
         self.error_code = "EVENT_TRACKING_DUPLICATE_EVENT"
+        self.session_id = session_id
+        self.attempt_id = attempt_id
         super().__init__(message)
