@@ -37,6 +37,9 @@ def classify_exploration_attempt(
 
 
 def _payload_attempt_id(event: TrackingEvent) -> str | None:
+    if event.attempt_id is not None:
+        s = event.attempt_id.strip()
+        return s if s else None
     raw = event.event_payload.get(ATTEMPT_ID_PAYLOAD_KEY)
     if raw is None:
         return None

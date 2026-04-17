@@ -12,19 +12,38 @@ from app.domains.event_tracking.entities.tracking_event import TrackingEvent
 from app.domains.event_tracking.exceptions.event_tracking_exceptions import (
     EventTrackingPersistenceError,
 )
+from app.domains.event_tracking.exploration_judgment import (
+    extract_attempt_id_from_payload,
+)
 from app.domains.event_tracking.repositories.tracking_event_row import (
     TrackingEventRow,
 )
 
 
+def _resolve_attempt_id(event: TrackingEvent) -> str | None:
+    if event.attempt_id is not None:
+        s = event.attempt_id.strip()
+        return s if s else None
+    return extract_attempt_id_from_payload(event.event_payload)
+
+
+def _attempt_id_from_row(row: TrackingEventRow) -> str | None:
+    if row.attempt_id is not None:
+        s = row.attempt_id.strip()
+        return s if s else None
+    return extract_attempt_id_from_payload(dict(row.event_payload))
+
+
 def _row_to_entity(row: TrackingEventRow) -> TrackingEvent:
+    payload = dict(row.event_payload)
     return TrackingEvent(
         id=UUID(row.id),
         session_id=row.session_id,
         user_id=row.user_id,
         event_type=row.event_type,
-        event_payload=dict(row.event_payload),
+        event_payload=payload,
         occurred_at=row.occurred_at,
+        attempt_id=_attempt_id_from_row(row),
     )
 
 
@@ -63,6 +82,7 @@ class SqlAlchemyEventTrackingRepository(EventTrackingRepository):
             session_id=event.session_id,
             user_id=event.user_id,
             event_type=event.event_type,
+            attempt_id=_resolve_attempt_id(event),
             event_payload=dict(event.event_payload),
             occurred_at=event.occurred_at,
         )

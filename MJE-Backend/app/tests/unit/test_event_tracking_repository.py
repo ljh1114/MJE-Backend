@@ -99,3 +99,44 @@ def test_sqlalchemy_repository_find_by_session_id_ordered() -> None:
         "create_course_clicked",
     ]
     assert found[0].occurred_at < found[1].occurred_at
+
+
+def test_sqlalchemy_repository_rejects_duplicate_save_click_same_attempt() -> None:
+    engine = create_engine(
+        "sqlite://",
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
+    )
+    Base.metadata.create_all(engine)
+    repo = SqlAlchemyEventTrackingRepository(engine)
+    sid = "sess_01HZ"
+    aid = "att_dup"
+    t0 = datetime(2026, 4, 17, 12, 0, tzinfo=timezone.utc)
+    payload = {
+        "page_url": "https://example.com/p",
+        "attempt_id": aid,
+    }
+    first = TrackingEvent(
+        id=uuid4(),
+        session_id=sid,
+        user_id=None,
+        event_type="save_course_clicked",
+        event_payload=payload,
+        occurred_at=t0,
+        attempt_id=aid,
+    )
+    duplicate = TrackingEvent(
+        id=uuid4(),
+        session_id=sid,
+        user_id=None,
+        event_type="save_course_clicked",
+        event_payload=payload,
+        occurred_at=t0,
+        attempt_id=aid,
+    )
+    repo.save(first)
+    try:
+        repo.save(duplicate)
+    except EventTrackingPersistenceError:
+        return
+    raise AssertionError("Expected EventTrackingPersistenceError for duplicate save")
