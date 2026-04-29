@@ -44,6 +44,14 @@ CATEGORY_NAVER_KEYWORD = {
     "activity": "이색데이트 체험",
 }
 
+# Datalab 쿼리용: {area} + 아래 키워드 조합으로 카테고리별 인기도 수집
+CATEGORY_TREND_KEYWORD = {
+    "restaurant": "맛집",
+    "cafe": "카페",
+    "walk": "산책",
+    "activity": "이색체험",
+}
+
 
 class CreateCourseUseCase:
 
@@ -74,7 +82,7 @@ class CreateCourseUseCase:
                 place.image_url = await self._fetch_image(place, cat)
 
         # 4. Datalab 트렌드 점수 반영 (rating에 가산 → scoring 기준으로만 활용)
-        await self._apply_trend_scores(filtered)
+        await self._apply_trend_scores(dto.area, filtered)
 
         # 5. 차량 이동 시 주차 정보 조회
         if transport.requires_parking_check():
@@ -148,19 +156,25 @@ class CreateCourseUseCase:
 
     # ── Datalab 트렌드 ────────────────────────────────────────────────────────
 
-    async def _apply_trend_scores(self, places_by_category: dict[str, list[Place]]) -> None:
-        keywords: list[str] = []
-        for places in places_by_category.values():
-            for place in places[:2]:
-                keywords.extend(place.keywords[:2])
+    async def _apply_trend_scores(
+        self, area: str, places_by_category: dict[str, list[Place]]
+    ) -> None:
+        # {area} + 카테고리 키워드 조합으로 지역별 인기도 수집
+        keywords = [
+            f"{area} {CATEGORY_TREND_KEYWORD[cat]}"
+            for cat in places_by_category
+            if cat in CATEGORY_TREND_KEYWORD
+        ]
         if not keywords:
             return
         try:
-            scores = await self._datalab.get_trend_scores(list(dict.fromkeys(keywords))[:5])
-            for places in places_by_category.values():
+            scores = await self._datalab.get_trend_scores(keywords[:5])
+            # 카테고리 단위로 트렌드 점수 적용 (정렬 기준으로만 사용)
+            for cat, places in places_by_category.items():
+                trend_key = f"{area} {CATEGORY_TREND_KEYWORD.get(cat, '')}"
+                category_trend = scores.get(trend_key, 0.0)
                 for place in places:
-                    bonus = max((scores.get(kw, 0) for kw in place.keywords), default=0)
-                    place.rating = min(5.0, place.rating + bonus * 2.5)
+                    place.rating = min(5.0, place.rating + category_trend * 2.5)
         except Exception:
             pass  # 트렌드 점수는 보조 지표 — 실패해도 추천 진행
 
