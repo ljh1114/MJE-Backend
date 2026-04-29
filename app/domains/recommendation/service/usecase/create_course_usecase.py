@@ -18,6 +18,7 @@ from app.domains.recommendation.service.dto.response.create_course_response_dto 
     PlaceResultDto,
 )
 from app.domains.recommendation.service.port.naver_datalab_port import NaverDatalabPort
+from app.domains.recommendation.service.port.naver_map_port import NaverMapPort
 from app.domains.recommendation.service.port.naver_search_port import NaverSearchPort
 
 _INSUFFICIENT_MESSAGE = (
@@ -55,9 +56,15 @@ CATEGORY_TREND_KEYWORD = {
 
 class CreateCourseUseCase:
 
-    def __init__(self, naver_search: NaverSearchPort, naver_datalab: NaverDatalabPort) -> None:
+    def __init__(
+        self,
+        naver_search: NaverSearchPort,
+        naver_datalab: NaverDatalabPort,
+        naver_map: NaverMapPort,
+    ) -> None:
         self._search = naver_search
         self._datalab = naver_datalab
+        self._map = naver_map
         self._slot_filter = TimeSlotFilter()
         self._scorer = RuleScorer()
         self._composer = CourseComposer()
@@ -98,6 +105,10 @@ class CreateCourseUseCase:
 
         # 8. Rule Scoring으로 메인/서브 순위 결정
         main, sub1, sub2 = self._scorer.rank_courses(courses)
+
+        # 9. 최종 코스에 한해 Naver 지도 API로 실제 이동소요시간·동선 보강
+        final_courses = [c for c in [main, sub1, sub2] if c is not None]
+        await self._enrich_with_routes(final_courses, dto.transport)
 
         return self._build_response(main, sub1, sub2, time_slot, len(courses))
 
@@ -189,6 +200,22 @@ class CreateCourseUseCase:
             for place in places:
                 place.rating = min(5.0, place.rating + category_trend * 2.5)
 
+    # ── 지도 API 동선 보강 ─────────────────────────────────────────────────────
+
+    async def _enrich_with_routes(self, courses: list[Course], transport: str) -> None:
+        """랭킹된 최종 코스에 한해 Naver 지도 API로 실제 이동소요시간·경로 적용"""
+        for course in courses:
+            for i, cp in enumerate(course.places[:-1]):
+                next_cp = course.places[i + 1]
+                route = await self._map.get_directions(
+                    cp.place.latitude, cp.place.longitude,
+                    next_cp.place.latitude, next_cp.place.longitude,
+                    transport,
+                )
+                if route is not None:
+                    cp.travel_time_to_next_minutes = route.duration_minutes
+                    cp.route_path_to_next = route.path
+
     # ── 응답 변환 ─────────────────────────────────────────────────────────────
 
     def _build_response(
@@ -224,6 +251,7 @@ class CreateCourseUseCase:
                 travel_time_to_next_minutes=cp.travel_time_to_next_minutes,
                 recommended_time_slot=time_slot.value,
                 has_parking=cp.place.has_parking if course.transport == "car" else None,
+                route_path_to_next=cp.route_path_to_next,
             )
             for cp in course.places
         ]

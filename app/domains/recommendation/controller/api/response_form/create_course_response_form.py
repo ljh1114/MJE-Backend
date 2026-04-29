@@ -24,6 +24,7 @@ class PlaceResponseItem(BaseModel):
     travelTimeToNextMinutes: Optional[int]
     recommendedTimeSlot: str
     hasParking: Optional[bool]
+    routePathToNext: list[list[float]] = []  # [[lat, lng], ...]
 
 
 class CourseResponseItem(BaseModel):
@@ -70,4 +71,5 @@ class CreateCourseResponseForm(BaseModel):
             travelTimeToNextMinutes=place.travel_time_to_next_minutes,
             recommendedTimeSlot=place.recommended_time_slot,
             hasParking=place.has_parking,
+            routePathToNext=[[lat, lng] for lat, lng in place.route_path_to_next],
         )

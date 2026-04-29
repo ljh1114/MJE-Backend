@@ -16,6 +16,7 @@ class PlaceResultDto:
     image_url: Optional[str] = None
     travel_time_to_next_minutes: Optional[int] = None
     has_parking: Optional[bool] = None
+    route_path_to_next: list[tuple[float, float]] = field(default_factory=list)
 
 
 @dataclass

@@ -19,6 +19,7 @@ class CoursePlace:
     visit_order: int
     estimated_duration_minutes: int
     travel_time_to_next_minutes: Optional[int] = None
+    route_path_to_next: list[tuple[float, float]] = field(default_factory=list)  # [(lat, lng), ...]
 
 
 @dataclass
