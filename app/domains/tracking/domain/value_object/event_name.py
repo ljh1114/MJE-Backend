@@ -8,7 +8,7 @@ from app.domains.tracking.domain.exception import InvalidEventNameException
 
 @dataclass(frozen=True)
 class EventName:
-    ALLOWED: ClassVar[FrozenSet[str]] = frozenset({"home_click", "course_create"})
+    ALLOWED: ClassVar[FrozenSet[str]] = frozenset({"course_create"})
 
     value: str
 
