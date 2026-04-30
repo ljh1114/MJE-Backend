@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import ClassVar, FrozenSet
 
-from app.domains.tracking.domain.exception import InvalidEventNameException
+from app.domains.courses.domain.exception import InvalidEventNameException
 
 
 @dataclass(frozen=True)
