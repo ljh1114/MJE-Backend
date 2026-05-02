@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.courses.repository.event_repository_impl import EventRepositoryImpl as CoursesEventRepositoryImpl
 from app.domains.courses.service.usecase.track_event_usecase import TrackEventUseCase as CoursesTrackEventUseCase
+from app.infrastructure.api.repository.export_log_repository_impl import ExportLogRepositoryImpl
+from app.infrastructure.api.service.usecase.track_export_event_usecase import TrackExportEventUseCase
 from app.domains.home.repository.event_repository_impl import EventRepositoryImpl as HomeEventRepositoryImpl
 from app.domains.home.service.usecase.track_event_usecase import TrackEventUseCase as HomeTrackEventUseCase
 from app.domains.recommendation.repository.course_detail_repository_impl import CourseDetailRepositoryImpl
@@ -51,6 +53,12 @@ def get_courses_track_event_usecase(
     session: AsyncSession = Depends(get_db_session),
 ) -> CoursesTrackEventUseCase:
     return CoursesTrackEventUseCase(event_repository=CoursesEventRepositoryImpl(session=session))
+
+
+def get_export_track_event_usecase(
+    session: AsyncSession = Depends(get_db_session),
+) -> TrackExportEventUseCase:
+    return TrackExportEventUseCase(repository=ExportLogRepositoryImpl(session=session))
 
 
 def get_course_detail_usecase(
