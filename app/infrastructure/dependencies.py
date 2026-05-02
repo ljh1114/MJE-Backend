@@ -14,7 +14,9 @@ from app.domains.home.service.usecase.track_event_usecase import TrackEventUseCa
 from app.domains.recommendation.repository.course_detail_repository_impl import CourseDetailRepositoryImpl
 from app.domains.recommendation.service.usecase.create_course_usecase import CreateCourseUseCase
 from app.domains.recommendation.service.usecase.get_course_detail_usecase import GetCourseDetailUseCase
+from app.infrastructure.api.service.usecase.send_email_usecase import SendEmailUseCase
 from app.infrastructure.database.session import get_db_session
+from app.infrastructure.external.email_client import EmailClient
 from app.infrastructure.external.naver_datalab_client import NaverDatalabClient
 from app.infrastructure.external.naver_map_client import NaverMapClient
 from app.infrastructure.external.naver_search_client import NaverSearchClient
@@ -59,6 +61,20 @@ def get_export_track_event_usecase(
     session: AsyncSession = Depends(get_db_session),
 ) -> TrackExportEventUseCase:
     return TrackExportEventUseCase(repository=ExportLogRepositoryImpl(session=session))
+
+
+@lru_cache
+def _email_client() -> EmailClient:
+    return EmailClient()
+
+
+def get_send_email_usecase(
+    session: AsyncSession = Depends(get_db_session),
+) -> SendEmailUseCase:
+    return SendEmailUseCase(
+        course_repository=CourseDetailRepositoryImpl(session=session),
+        email_port=_email_client(),
+    )
 
 
 def get_course_detail_usecase(
