@@ -114,9 +114,16 @@ class CreateCourseUseCase:
         final_courses = [c for c in [main, sub1, sub2] if c is not None]
         await self._enrich_with_routes(final_courses, dto.transport)
 
-        course_id = str(uuid.uuid4())
-        response = self._build_response(main, sub1, sub2, time_slot, len(courses), course_id)
-        self._course_store.save(course_id, response)
+        recommendation_id = str(uuid.uuid4())
+        response = self._build_response(
+            main,
+            sub1,
+            sub2,
+            time_slot,
+            len(courses),
+            recommendation_id,
+        )
+        self._course_store.save(recommendation_id, response)
         return response
 
     # ── 트렌드 수집 ───────────────────────────────────────────────────────────
@@ -232,20 +239,20 @@ class CreateCourseUseCase:
         sub2: Course | None,
         time_slot: TimeSlot,
         total_courses: int,
-        course_id: str,
+        recommendation_id: str,
     ) -> CreateCourseResponseDto:
         message = _INSUFFICIENT_MESSAGE if total_courses < 3 else None
         sub_courses = [
-            self._to_course_dto(c, time_slot) for c in [sub1, sub2] if c is not None
+            self._to_course_dto(c, time_slot, str(uuid.uuid4())) for c in [sub1, sub2] if c is not None
         ]
         return CreateCourseResponseDto(
-            course_id=course_id,
-            main_course=self._to_course_dto(main, time_slot) if main else None,
+            course_id=recommendation_id,
+            main_course=self._to_course_dto(main, time_slot, str(uuid.uuid4())) if main else None,
             sub_courses=sub_courses,
             message=message,
         )
 
-    def _to_course_dto(self, course: Course, time_slot: TimeSlot) -> CourseResultDto:
+    def _to_course_dto(self, course: Course, time_slot: TimeSlot, course_id: str) -> CourseResultDto:
         places = [
             PlaceResultDto(
                 visit_order=cp.visit_order,
@@ -265,6 +272,7 @@ class CreateCourseUseCase:
             for cp in course.places
         ]
         return CourseResultDto(
+            course_id=course_id,
             course_type=course.course_type,
             transport=course.transport,
             total_duration_minutes=course.total_duration_minutes(),

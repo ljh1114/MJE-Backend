@@ -89,7 +89,5 @@ def get_send_email_usecase(
     )
 
 
-def get_course_detail_usecase(
-    session: AsyncSession = Depends(get_db_session),
-) -> GetCourseDetailUseCase:
-    return GetCourseDetailUseCase(course_detail_repository=CourseDetailRepositoryImpl(session=session))
+def get_course_detail_usecase() -> GetCourseDetailUseCase:
+    return GetCourseDetailUseCase(course_store=_course_store())

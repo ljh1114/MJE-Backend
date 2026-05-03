@@ -28,6 +28,7 @@ class PlaceResponseItem(BaseModel):
 
 
 class CourseResponseItem(BaseModel):
+    courseId: str
     courseType: str
     transport: str
     totalDurationMinutes: int
@@ -52,6 +53,7 @@ class CreateCourseResponseForm(BaseModel):
     @classmethod
     def _map_course(cls, course: CourseResultDto) -> CourseResponseItem:
         return CourseResponseItem(
+            courseId=course.course_id,
             courseType=course.course_type,
             transport=course.transport,
             totalDurationMinutes=course.total_duration_minutes,
