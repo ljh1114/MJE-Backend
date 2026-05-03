@@ -34,6 +34,13 @@ _BOLD_RE = re.compile(r"</?b>")
 
 ALL_CATEGORIES = ["restaurant", "cafe", "walk", "activity"]
 
+_CATEGORY_SIGNALS: dict[str, tuple[str, ...]] = {
+    "restaurant": ("음식", "식당", "맛집", "요리", "주점", "술집", "포차", "바", "레스토랑"),
+    "cafe": ("카페", "커피", "디저트", "베이커리", "브런치"),
+    "walk": ("공원", "산책", "거리", "둘레길", "하천", "호수", "전망", "야경", "광장"),
+    "activity": ("전시", "체험", "공방", "영화", "볼링", "방탈출", "노래방", "갤러리", "스튜디오"),
+}
+
 CATEGORY_IMAGE_SUFFIX = {
     "restaurant": "음식 사진",
     "cafe": "카페 외관",
@@ -164,7 +171,8 @@ class CreateCourseUseCase:
             display = max(5, min(20, int(10 + trend_score * 10)))
             keyword = CATEGORY_NAVER_KEYWORD[cat]
             raw = await self._search.search_places(f"{area} {keyword}", cat, display=display)
-            result[cat] = [self._to_place(item, cat, rank) for rank, item in enumerate(raw, 1)]
+            candidates = [self._to_place(item, cat, rank) for rank, item in enumerate(raw, 1)]
+            result[cat] = self._sanitize_places(area, cat, candidates)
         return result
 
     def _to_place(self, item: dict, category: str, rank: int) -> Place:
@@ -197,6 +205,109 @@ class CreateCourseUseCase:
             telephone=item.get("telephone", ""),
             has_parking=has_parking,
         )
+
+    def _sanitize_places(self, requested_area: str, category: str, places: list[Place]) -> list[Place]:
+        sanitized: list[Place] = []
+        seen_keys: set[tuple[str, str]] = set()
+        dropped_counts = {
+            "invalid_coordinate": 0,
+            "area_mismatch": 0,
+            "duplicate": 0,
+            "category_mismatch": 0,
+        }
+
+        for place in places:
+            if not self._has_valid_coordinates(place):
+                dropped_counts["invalid_coordinate"] += 1
+                continue
+
+            if not self._matches_requested_area(requested_area, place):
+                dropped_counts["area_mismatch"] += 1
+                continue
+
+            dedupe_key = self._place_dedupe_key(place)
+            if dedupe_key in seen_keys:
+                dropped_counts["duplicate"] += 1
+                continue
+
+            if not self._matches_category_signal(category, place):
+                dropped_counts["category_mismatch"] += 1
+                continue
+
+            seen_keys.add(dedupe_key)
+            sanitized.append(place)
+
+        if any(dropped_counts.values()):
+            logger.info(
+                "recommendation.sanitize area=%s category=%s before=%s after=%s dropped=%s",
+                requested_area,
+                category,
+                len(places),
+                len(sanitized),
+                dropped_counts,
+            )
+
+        return sanitized
+
+    def _has_valid_coordinates(self, place: Place) -> bool:
+        return not (
+            abs(place.latitude) < 0.000001
+            or abs(place.longitude) < 0.000001
+            or not (-90 <= place.latitude <= 90)
+            or not (-180 <= place.longitude <= 180)
+        )
+
+    def _matches_requested_area(self, requested_area: str, place: Place) -> bool:
+        normalized_area = self._normalize_text(requested_area)
+        if not normalized_area:
+            return True
+
+        haystack = self._normalize_text(
+            " ".join(
+                part
+                for part in [place.area, place.address, place.road_address]
+                if part
+            )
+        )
+        if not haystack:
+            return False
+
+        return all(token in haystack for token in normalized_area.split())
+
+    def _place_dedupe_key(self, place: Place) -> tuple[str, str]:
+        normalized_name = self._normalize_text(place.name)
+        normalized_address = self._normalize_text(place.road_address or place.address)
+        return normalized_name, normalized_address
+
+    def _matches_category_signal(self, category: str, place: Place) -> bool:
+        signals = _CATEGORY_SIGNALS.get(category, ())
+        if not signals:
+            return True
+
+        text = self._normalize_text(
+            " ".join(
+                [
+                    place.name,
+                    place.main_description,
+                    place.brief_description,
+                    " ".join(place.keywords),
+                ]
+            )
+        )
+        if not text:
+            return True
+
+        if any(signal in text for signal in signals):
+            return True
+
+        # 음식점은 카테고리 폭이 넓어서 너무 공격적으로 제외하지 않는다.
+        if category == "restaurant":
+            return True
+
+        return False
+
+    def _normalize_text(self, value: str) -> str:
+        return " ".join(value.lower().split())
 
     # ── 이미지 ────────────────────────────────────────────────────────────────
 
