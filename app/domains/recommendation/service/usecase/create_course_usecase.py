@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import logging
 import re
 import uuid
 from datetime import time
@@ -56,6 +57,9 @@ CATEGORY_TREND_KEYWORD = {
 }
 
 
+logger = logging.getLogger(__name__)
+
+
 class CreateCourseUseCase:
 
     def __init__(
@@ -106,6 +110,14 @@ class CreateCourseUseCase:
 
         # 7. 코스 조합 (Domain Service)
         courses = self._composer.compose(filtered, time_slot, transport, start_time)
+        self._log_recommendation_diagnostics(
+            dto=dto,
+            time_slot=time_slot,
+            transport=transport,
+            places_by_category=places_by_category,
+            filtered_places=filtered,
+            courses=courses,
+        )
 
         # 8. Rule Scoring으로 메인/서브 순위 결정
         main, sub1, sub2 = self._scorer.rank_courses(courses)
@@ -280,6 +292,62 @@ class CreateCourseUseCase:
         )
 
     # ── 유틸 ──────────────────────────────────────────────────────────────────
+
+    def _log_recommendation_diagnostics(
+        self,
+        dto: CreateCourseRequestDto,
+        time_slot: TimeSlot,
+        transport: Transport,
+        places_by_category: dict[str, list[Place]],
+        filtered_places: dict[str, list[Place]],
+        courses: list[Course],
+    ) -> None:
+        raw_counts = {category: len(places) for category, places in places_by_category.items()}
+        filtered_counts = {category: len(places) for category, places in filtered_places.items()}
+        empty_after_filter = [
+            category for category, count in filtered_counts.items() if count == 0
+        ]
+        populated_categories = [
+            category for category, count in filtered_counts.items() if count > 0
+        ]
+
+        if len(courses) >= 3:
+            logger.info(
+                "recommendation.generated area=%s time_slot=%s transport=%s raw_counts=%s filtered_counts=%s course_count=%s",
+                dto.area,
+                time_slot.value,
+                transport.value,
+                raw_counts,
+                filtered_counts,
+                len(courses),
+            )
+            return
+
+        reason_codes: list[str] = []
+        if not populated_categories:
+            reason_codes.append("no_places_after_filter")
+        elif len(populated_categories) == 1:
+            reason_codes.append("single_category_remaining")
+        elif len(courses) == 0:
+            reason_codes.append("composition_failed")
+        if len(courses) < 3:
+            reason_codes.append("insufficient_course_count")
+        if empty_after_filter:
+            reason_codes.append("category_exhausted_after_filter")
+
+        logger.warning(
+            "recommendation.insufficient area=%s start_time=%s time_slot=%s transport=%s raw_counts=%s filtered_counts=%s empty_after_filter=%s populated_categories=%s course_count=%s reason_codes=%s",
+            dto.area,
+            dto.start_time,
+            time_slot.value,
+            transport.value,
+            raw_counts,
+            filtered_counts,
+            empty_after_filter,
+            populated_categories,
+            len(courses),
+            reason_codes,
+        )
 
     def _parse_time(self, time_str: str) -> time:
         try:
