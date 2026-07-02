@@ -122,7 +122,7 @@ MySQL을 사용하며, SQLAlchemy 비동기 ORM으로 접근합니다.
 | `courses` | 생성된 데이트 코스 (course_id, session_id, grade, area, transport 등) |
 | `course_places` | 코스에 포함된 장소 목록 (courses.course_id FK, place_order, place_type 등) |
 | `home_events` | 홈 화면 이벤트 로그 (view_home, logo_click, home_click) |
-| `landing_events` | 랜딩 페이지 이벤트 로그 |
+| `landing_events` | 랜딩 페이지 이벤트 로그 (view_landing, landing_top. landing_bottom) |
 | `courses_events` | 코스 화면 이벤트 로그 (course_create, card_click, tryagain_click 등) |
 | `export_logs` | 코스 내보내기 로그 (course_export, course_send, export_close) |
 
